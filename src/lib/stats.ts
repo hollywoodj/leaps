@@ -266,7 +266,7 @@ export function progressSnapshot(
   if (tracker.type === "target") {
     const t = targetTotals(tracker, logs, asOf);
     return {
-      label: `${formatNumber(t.actual)} of ${formatNumber(tracker.goalValue)}${unit ? ` ${unit}` : ""}`,
+      label: `${formatAmount(t.actual, unit)} of ${formatAmount(tracker.goalValue, unit)}`,
       percent: t.percent,
       pacePercent: t.pacePercent,
       onTrack: t.onTrack,
@@ -284,7 +284,7 @@ export function progressSnapshot(
     const onTrack = tracker.isBad ? current <= tracker.goalValue : current >= tracker.goalValue;
     const percent = tracker.goalValue === 0 ? (current === 0 ? 100 : 0) : (current / tracker.goalValue) * 100;
     return {
-      label: `${formatNumber(current)} avg${unit ? ` ${unit}` : ""} · goal ${formatNumber(tracker.goalValue)}`,
+      label: `${formatAmount(current, unit)} avg · goal ${formatAmount(tracker.goalValue, unit)}`,
       percent,
       pacePercent: 100,
       onTrack: current === 0 ? true : onTrack,
@@ -333,7 +333,7 @@ export function progressSnapshot(
     return {
       label: limit === 0
         ? current === 0 ? "Clean so far" : `${formatNumber(current)} over`
-        : `${formatNumber(current)} of ${formatNumber(limit)}${unit ? ` ${unit}` : ""} max`,
+        : `${formatAmount(current, unit)} of ${formatAmount(limit, unit)} max`,
       percent: onTrack ? percent : 100,
       pacePercent: 100,
       onTrack,
@@ -350,10 +350,10 @@ export function progressSnapshot(
   const goal = tracker.timesPerPeriod;
   const periodLabel = periodWord(tracker.repeatKind);
   return {
-    label: `${formatNumber(current)} of ${formatNumber(goal)}${unit ? ` ${unit}` : ""} ${periodLabel}`,
+    label: `${formatAmount(current, unit)} of ${formatAmount(goal, unit)} ${periodLabel}`,
     percent: goal === 0 ? 100 : (current / goal) * 100,
     pacePercent: paceForHabit(tracker, asOf, bounds.start, bounds.end),
-    onTrack: current + 1e-9 >= expectedHabitPace(tracker, asOf),
+    onTrack: tracker.repeatKind === "daily" ? true : current + 1e-9 >= expectedHabitPace(tracker, asOf),
     streak,
     bestStreak: best,
     successRate: rate,
@@ -390,8 +390,13 @@ export function cumulativeSeries(
 }
 
 export function formatNumber(value: number): string {
-  if (Number.isInteger(value)) return String(value);
-  return Number(value.toFixed(2)).toString();
+  if (Number.isInteger(value)) return value.toLocaleString("en-US");
+  return Number(value.toFixed(2)).toLocaleString("en-US");
+}
+
+export function formatAmount(value: number, unit: string): string {
+  if (unit === "$" || unit === "£" || unit === "€") return `${unit}${formatNumber(value)}`;
+  return unit ? `${formatNumber(value)} ${unit}` : formatNumber(value);
 }
 
 function groupLogs(logs: LogEntry[]): Map<string, LogEntry[]> {
