@@ -134,6 +134,10 @@ function startBackend(port) {
       return;
     }
 
+    const logs = createLogBuffer();
+    const logFile = path.join(userDataDir(), "startup.log");
+    const bootstrapJs = path.join(dir, "server-bootstrap.cjs");
+    const serverEntry = fs.existsSync(bootstrapJs) ? bootstrapJs : serverJs;
     const env = createBackendEnv({
       port,
       dbPath: dbPath(),
@@ -145,10 +149,8 @@ function startBackend(port) {
       }),
       baseEnv: process.env,
       packaged: app.isPackaged,
+      startupLog: logFile,
     });
-
-    const logs = createLogBuffer();
-    const logFile = path.join(userDataDir(), "startup.log");
     let settled = false;
     const succeed = () => {
       if (settled) return;
@@ -168,7 +170,7 @@ function startBackend(port) {
       reject(new Error(message));
     };
 
-    serverProcess = spawn(app.isPackaged ? process.execPath : process.platform === "win32" ? "node.exe" : "node", [serverJs], {
+    serverProcess = spawn(app.isPackaged ? process.execPath : process.platform === "win32" ? "node.exe" : "node", [serverEntry], {
       cwd: dir,
       env,
       stdio: spawnStdio(),

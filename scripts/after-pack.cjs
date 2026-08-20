@@ -1,7 +1,9 @@
 const path = require("node:path");
-const { existsSync } = require("node:fs");
+const { cpSync, existsSync } = require("node:fs");
 const {
+  assertStandaloneHasNext,
   copyNativeModules,
+  ensureStandaloneNodeModules,
   packagedResourcesDir,
   rebuiltSqliteAddon,
   replaceSqliteAddons,
@@ -17,10 +19,16 @@ async function afterPack(context) {
   }
 
   const projectDir = context.packager.projectDir || process.cwd();
+  const restored = ensureStandaloneNodeModules(projectDir, standalone);
+  const bootstrapSrc = path.join(projectDir, "electron", "server-bootstrap.cjs");
+  if (existsSync(bootstrapSrc)) cpSync(bootstrapSrc, path.join(standalone, "server-bootstrap.cjs"));
   const projectModules = path.join(projectDir, "node_modules");
   const copied = copyNativeModules(projectModules, path.join(standalone, "node_modules"));
   const replaced = replaceSqliteAddons(standalone, rebuiltSqliteAddon(projectModules));
-  console.log(`afterPack: copied ${copied.join(", ")} and replaced ${replaced.length} sqlite addons`);
+  assertStandaloneHasNext(standalone);
+  console.log(
+    `afterPack: ${restored ? "restored Next.js modules, " : ""}copied ${copied.join(", ")} and replaced ${replaced.length} sqlite addons`,
+  );
 }
 
 module.exports = afterPack;

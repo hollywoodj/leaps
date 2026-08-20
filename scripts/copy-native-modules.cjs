@@ -1,4 +1,4 @@
-const { cpSync, existsSync, mkdirSync, readdirSync, rmSync } = require("node:fs");
+const { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const path = require("node:path");
 const { nativeModulesToCopy } = require("../electron/backend-utils.cjs");
 
@@ -48,6 +48,47 @@ function rebuiltSqliteAddon(projectModules) {
   return path.join(projectModules, "better-sqlite3", "build", "Release", "better_sqlite3.node");
 }
 
+// electron-builder's extraResources filter skips a source-root `node_modules`
+// directory (app-builder-lib createFilter). Copy it from a FileSet whose `from`
+// is the node_modules folder itself, and restore it here if that still happens.
+function ensureStandaloneNodeModules(projectDir, standalone) {
+  const destNext = path.join(standalone, "node_modules", "next");
+  if (existsSync(destNext)) return false;
+  const src = path.join(projectDir, ".next", "standalone", "node_modules");
+  const srcNext = path.join(src, "next");
+  if (!existsSync(srcNext)) {
+    throw new Error(
+      `Standalone Next.js node_modules missing at ${srcNext}. electron-builder skips a top-level node_modules folder in extraResources.`,
+    );
+  }
+  const dest = path.join(standalone, "node_modules");
+  mkdirSync(dest, { recursive: true });
+  cpSync(src, dest, { recursive: true, dereference: true });
+  return true;
+}
+
+function assertStandaloneHasNext(standalone) {
+  const destNext = path.join(standalone, "node_modules", "next", "package.json");
+  if (!existsSync(destNext)) {
+    throw new Error(`Packaged standalone is missing Next.js at ${destNext}`);
+  }
+}
+
+function rewriteStandaloneServerConfig(source) {
+  const marker = "process.env.__NEXT_PRIVATE_STANDALONE_CONFIG";
+  if (!source.includes(marker) || source.includes("nextConfig.outputFileTracingRoot = dir")) return source;
+  const patch = "nextConfig.outputFileTracingRoot = dir\nif (nextConfig.turbopack) nextConfig.turbopack.root = dir\n\n";
+  return source.replace(marker, `${patch}${marker}`);
+}
+
+function rewriteStandaloneServerFile(standaloneDir) {
+  const serverJs = path.join(standaloneDir, "server.js");
+  const source = readFileSync(serverJs, "utf8");
+  const next = rewriteStandaloneServerConfig(source);
+  if (next !== source) writeFileSync(serverJs, next);
+  return next !== source;
+}
+
 function replaceSqliteAddons(root, rebuiltAddon) {
   if (!existsSync(rebuiltAddon)) throw new Error(`Rebuilt sqlite addon missing: ${rebuiltAddon}`);
   const replaced = [];
@@ -74,10 +115,14 @@ function replaceSqliteAddons(root, rebuiltAddon) {
 }
 
 module.exports = {
+  assertStandaloneHasNext,
   copyNativeModules,
+  ensureStandaloneNodeModules,
   isSqlitePackageName,
   packagedResourcesDir,
   rebuiltSqliteAddon,
   removeSqlitePackages,
   replaceSqliteAddons,
+  rewriteStandaloneServerConfig,
+  rewriteStandaloneServerFile,
 };
