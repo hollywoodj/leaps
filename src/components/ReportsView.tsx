@@ -2,14 +2,19 @@
 
 import { BarChart } from "@/components/Charts";
 import { CalendarHeatmap } from "@/components/CalendarHeatmap";
-import { ProgressBar, StatChip } from "@/components/ProgressBar";
+import { HeaderButton, NavHeader } from "@/components/NavHeader";
+import { ProgressBar } from "@/components/ProgressBar";
 import { api } from "@/lib/client";
-import { todayISO } from "@/lib/dates";
+import { formatPretty, formatShort, todayISO } from "@/lib/dates";
+import { frequencyLabel, reportMetrics } from "@/lib/labels";
+import { formatNumber } from "@/lib/stats";
 import type { ReportsPayload, Tag } from "@/lib/types";
 import clsx from "clsx";
+import { ChevronLeft, ChevronRight, Settings2, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+const TABS = ["Progress", "Trends", "Calendar", "Rankings"] as const;
 const PERIODS = ["week", "month", "year", "all"] as const;
 
 export function ReportsView() {
@@ -17,8 +22,9 @@ export function ReportsView() {
   const [tagId, setTagId] = useState("");
   const [tags, setTags] = useState<Tag[]>([]);
   const [data, setData] = useState<ReportsPayload | null>(null);
-  const [tab, setTab] = useState<"progress" | "trends" | "calendar" | "rankings">("progress");
+  const [tab, setTab] = useState<(typeof TABS)[number]>("Progress");
   const [error, setError] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -40,45 +46,93 @@ export function ReportsView() {
     void load();
   }, [load]);
 
+  const totals = useMemo(() => {
+    if (!data) return { done: 0, due: 0, avg: 0 };
+    const done = data.trackers.reduce((s, t) => s + t.completed, 0);
+    const due = data.trackers.reduce((s, t) => s + t.dueCount, 0);
+    return { done, due, avg: data.dayCount ? done / data.dayCount : 0 };
+  }, [data]);
+
+  const periodLabel =
+    period === "all"
+      ? "All time"
+      : period === "week"
+        ? "This week"
+        : period === "year"
+          ? "This year"
+          : data
+            ? formatPretty(data.from, { month: "long", year: "numeric" })
+            : "This month";
+
   return (
     <div>
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal">All in one place</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Reports</h1>
-      </header>
-
-      <div className="flex flex-wrap gap-2">
-        {PERIODS.map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => setPeriod(p)}
-            className={clsx(
-              "rounded-full px-3 py-1.5 text-sm font-semibold capitalize",
-              period === p ? "bg-ink text-white" : "bg-white text-muted shadow-card",
+      <NavHeader
+        title="Reports"
+        menu={[
+          { href: "/", label: "Today" },
+          { href: "/reports", label: "Reports" },
+        ]}
+        left={
+          <HeaderButton href="/settings" label="Settings">
+            <Settings2 size={22} />
+          </HeaderButton>
+        }
+        right={
+          <HeaderButton onClick={() => setFilterOpen((v) => !v)} label="Filter">
+            <SlidersHorizontal size={20} />
+          </HeaderButton>
+        }
+        tabs={[...TABS]}
+        activeTab={tab}
+        onTab={(next) => setTab(next as (typeof TABS)[number])}
+      >
+        {tab === "Trends" && data && (
+          <div className="px-4 pb-3">
+            <div className="mb-2 flex items-start justify-between">
+              <div>
+                <div className="text-[17px] font-semibold">Total Done</div>
+                <div className="text-[12px] text-white/75">Average: {formatNumber(Number(totals.avg.toFixed(1)))} per day</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[28px] font-bold leading-none">{Math.round(data.overallPercent)}%</div>
+                <div className="text-[12px] text-white/75">
+                  {totals.done}/{totals.due}
+                </div>
+              </div>
+            </div>
+            <BarChart bars={data.trends} onNavy />
+            {data.trends.length > 1 && (
+              <div className="mt-1 flex justify-between text-[10px] text-white/70">
+                <span>{formatShort(data.trends[0].date)}</span>
+                <span>{formatShort(data.trends[data.trends.length - 1].date)}</span>
+              </div>
             )}
-          >
-            {p}
-          </button>
-        ))}
-      </div>
+          </div>
+        )}
+      </NavHeader>
 
-      {tags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setTagId("")}
-            className={clsx("rounded-full px-3 py-1 text-xs font-semibold", !tagId ? "bg-teal text-white" : "bg-white shadow-card")}
-          >
-            All tags
-          </button>
+      {filterOpen && (
+        <div className="flex flex-wrap gap-2 bg-white px-4 py-3">
+          {PERIODS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPeriod(p)}
+              className={clsx(
+                "rounded-full px-3 py-1 text-[12px] font-semibold capitalize",
+                period === p ? "bg-ios text-white" : "bg-grouped text-label",
+              )}
+            >
+              {p}
+            </button>
+          ))}
           {tags.map((tag) => (
             <button
               key={tag.id}
               type="button"
-              onClick={() => setTagId(tag.id)}
-              className={clsx("rounded-full px-3 py-1 text-xs font-semibold", tagId === tag.id ? "text-white" : "bg-white shadow-card")}
-              style={tagId === tag.id ? { background: tag.color } : undefined}
+              onClick={() => setTagId(tagId === tag.id ? "" : tag.id)}
+              className="rounded-full px-3 py-1 text-[12px] font-semibold"
+              style={tagId === tag.id ? { background: tag.color, color: "white" } : { background: "#f2f2f7" }}
             >
               {tag.name}
             </button>
@@ -86,96 +140,96 @@ export function ReportsView() {
         </div>
       )}
 
-      {error && <p className="mt-4 text-sm text-bad">{error}</p>}
-      {!data && !error && <p className="mt-8 text-sm text-muted">Building reports…</p>}
+      <div className="flex items-center justify-between bg-[#ececf1] px-4 py-2 text-[13px] font-medium text-label">
+        <ChevronLeft size={16} className="text-muted" />
+        <span>
+          {period === "month" ? "Month" : period === "week" ? "Week" : period === "year" ? "Year" : "All"}: {periodLabel}
+        </span>
+        <ChevronRight size={16} className="text-muted" />
+      </div>
 
-      {data && (
-        <>
-          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatChip label="Overall" value={`${Math.round(data.overallPercent)}%`} />
-            <StatChip label="On pace" value={`${data.onTrackCount}/${data.trackerCount}`} />
-            <StatChip label="Perfect days" value={`${data.perfectDays}`} />
-            <StatChip label="Days tracked" value={`${data.dayCount}`} />
+      {error && <p className="px-4 py-3 text-sm text-bad">{error}</p>}
+      {!data && !error && <p className="px-4 py-8 text-center text-sm text-muted">Building reports…</p>}
+
+      {data && tab === "Progress" && (
+        <div className="divide-y divide-black/[0.06] bg-white">
+          <div className="px-4 py-3">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-[16px] font-semibold text-navy">Average Progress: {Math.round(data.overallPercent)}%</div>
+              <div className="text-right">
+                <div className="text-[17px] font-semibold">{data.onTrackCount}/{data.trackerCount}</div>
+                <div className="text-[11px] text-good">on track</div>
+              </div>
+            </div>
+            <ProgressBar percent={data.overallPercent} onTrack />
           </div>
-
-          <div className="mt-6 flex gap-1 rounded-2xl bg-white p-1 shadow-card">
-            {(["progress", "trends", "calendar", "rankings"] as const).map((id) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTab(id)}
-                className={clsx(
-                  "flex-1 rounded-xl px-2 py-2 text-xs font-semibold capitalize",
-                  tab === id ? "bg-stone-100 text-ink" : "text-muted",
-                )}
-              >
-                {id}
-              </button>
-            ))}
-          </div>
-
-          {tab === "progress" && (
-            <div className="mt-4 space-y-3">
-              {data.trackers.length === 0 && (
-                <p className="text-sm text-muted">
-                  No trackers yet. <Link href="/create" className="font-semibold text-teal">Create one</Link>.
-                </p>
-              )}
-              {data.trackers.map((row) => (
-                <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="card block p-4">
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 font-semibold">
-                      <span>{row.tracker.emoji}</span>
-                      {row.tracker.title}
-                    </div>
-                    <span className={clsx("text-xs font-semibold", row.progress.onTrack ? "text-good" : "text-bad")}>
-                      {Math.round(Math.min(row.progress.percent, 999))}%
-                    </span>
+          {data.trackers.map((row) => {
+            const metrics = reportMetrics(row.tracker, row.progress);
+            return (
+              <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="block px-4 py-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="truncate text-[16px] font-semibold text-navy">
+                    {row.tracker.title} {row.tracker.emoji}
                   </div>
-                  <ProgressBar
-                    percent={row.progress.percent}
-                    pacePercent={row.progress.pacePercent}
-                    color={row.tracker.color}
-                    onTrack={row.progress.onTrack}
-                  />
-                  <p className="mt-2 text-xs text-muted">{row.progress.label}</p>
-                </Link>
-              ))}
-            </div>
-          )}
+                  <div className="shrink-0 text-right">
+                    <div className="text-[17px] font-semibold leading-none">{metrics.primary}</div>
+                    <div className="mt-0.5 text-[11px] text-muted">{metrics.secondary}</div>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <ProgressBar percent={row.progress.percent} pacePercent={row.progress.pacePercent} onTrack={row.progress.onTrack} />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
-          {tab === "trends" && (
-            <div className="card mt-4 p-4">
-              <p className="mb-3 text-sm text-muted">Completion rate across the selected period.</p>
-              <BarChart bars={data.trends} />
-            </div>
-          )}
+      {data && tab === "Trends" && (
+        <div className="divide-y divide-black/[0.06] bg-white">
+          {data.trackers.map((row) => (
+            <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="flex items-center justify-between px-4 py-3">
+              <div>
+                <div className="text-[16px] font-semibold text-navy">
+                  {row.tracker.title} {row.tracker.emoji}
+                </div>
+                <div className="text-[12px] text-muted">{frequencyLabel(row.tracker)}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[17px] font-semibold">{Math.round(row.progress.successRate * 100)}%</div>
+                <div className="text-[12px] text-muted">
+                  {row.completed}/{row.dueCount}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
 
-          {tab === "calendar" && (
-            <div className="card mt-4 p-4">
-              <CalendarHeatmap days={data.calendar} />
-            </div>
-          )}
+      {data && tab === "Calendar" && (
+        <div className="bg-white px-4 py-4">
+          <CalendarHeatmap days={data.calendar} />
+        </div>
+      )}
 
-          {tab === "rankings" && (
-            <div className="mt-4 space-y-2">
-              {[...data.trackers]
-                .sort((a, b) => b.progress.streak - a.progress.streak || b.progress.successRate - a.progress.successRate)
-                .map((row, index) => (
-                  <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="card flex items-center gap-3 p-3">
-                    <span className="w-6 text-center text-sm font-bold text-muted">{index + 1}</span>
-                    <span className="text-xl">{row.tracker.emoji}</span>
-                    <div className="flex-1">
-                      <div className="font-semibold">{row.tracker.title}</div>
-                      <div className="text-xs text-muted">
-                        {row.progress.streak} day streak · {Math.round(row.progress.successRate * 100)}% success
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-            </div>
-          )}
-        </>
+      {data && tab === "Rankings" && (
+        <div className="divide-y divide-black/[0.06] bg-white">
+          {[...data.trackers]
+            .sort((a, b) => b.progress.streak - a.progress.streak || b.progress.successRate - a.progress.successRate)
+            .map((row, index) => (
+              <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="flex items-center gap-3 px-4 py-3">
+                <span className="w-6 text-center text-[15px] font-bold text-muted">{index + 1}</span>
+                <div className="flex-1">
+                  <div className="text-[16px] font-semibold text-navy">
+                    {row.tracker.title} {row.tracker.emoji}
+                  </div>
+                  <div className="text-[12px] text-muted">
+                    {row.progress.streak} day streak · {Math.round(row.progress.successRate * 100)}% success
+                  </div>
+                </div>
+              </Link>
+            ))}
+        </div>
       )}
     </div>
   );

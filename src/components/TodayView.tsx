@@ -1,13 +1,15 @@
 "use client";
 
-import { DateNav } from "@/components/DateNav";
+import { DateStrip } from "@/components/DateStrip";
+import { HeaderButton, NavHeader } from "@/components/NavHeader";
 import { LogValueModal } from "@/components/LogValueModal";
+import { PerfectDay } from "@/components/PerfectDay";
 import { TrackerCard } from "@/components/TrackerCard";
 import { api } from "@/lib/client";
 import { todayISO } from "@/lib/dates";
-import type { TodayItem } from "@/lib/types";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import type { Tag, TodayItem } from "@/lib/types";
+import { Settings2, SlidersHorizontal } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type TodayResponse = {
   date: string;
@@ -22,12 +24,21 @@ export function TodayView() {
   const [data, setData] = useState<TodayResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [logging, setLogging] = useState<TodayItem | null>(null);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [tagId, setTagId] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
+  const wasPerfect = useRef<boolean | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const next = await api<TodayResponse>(`/api/today?date=${date}`);
+      const [next, tagPayload] = await Promise.all([
+        api<TodayResponse>(`/api/today?date=${date}`),
+        api<{ tags: Tag[] }>("/api/tags"),
+      ]);
       setData(next);
+      setTags(tagPayload.tags);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load today");
     }
@@ -36,6 +47,16 @@ export function TodayView() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    wasPerfect.current = null;
+  }, [date]);
+
+  useEffect(() => {
+    if (!data) return;
+    if (wasPerfect.current === false && data.perfect) setCelebrate(true);
+    wasPerfect.current = data.perfect;
+  }, [data]);
 
   async function log(item: TodayItem, status: "yes" | "no" | "skip" | "value", value?: number, note?: string) {
     await api(`/api/trackers/${item.tracker.id}/logs`, {
@@ -53,41 +74,64 @@ export function TodayView() {
     await load();
   }
 
-  const empty = data && data.due.length + data.done.length + data.missed.length === 0;
+  const filtered = (items: TodayItem[]) =>
+    tagId ? items.filter((item) => item.tags.some((tag) => tag.id === tagId)) : items;
+
+  const due = filtered(data?.due ?? []);
+  const missed = filtered(data?.missed ?? []);
+  const done = filtered(data?.done ?? []);
+  const empty = data && due.length + done.length + missed.length === 0;
 
   return (
     <div>
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal">Daily Goals</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Today</h1>
-        <p className="mt-1 text-sm text-muted">Log what is due. Land everything in Done for a perfect day.</p>
-      </header>
+      <NavHeader
+        title="Today"
+        menu={[
+          { href: "/", label: "Today" },
+          { href: "/reports", label: "Reports" },
+        ]}
+        left={
+          <HeaderButton href="/settings" label="Settings">
+            <Settings2 size={22} />
+          </HeaderButton>
+        }
+        right={
+          <HeaderButton onClick={() => setFilterOpen((v) => !v)} label="Filter">
+            <SlidersHorizontal size={20} />
+          </HeaderButton>
+        }
+      />
 
-      <DateNav date={date} onChange={setDate} />
+      <DateStrip date={date} onChange={setDate} />
 
-      {error && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-bad">{error}</p>}
-
-      {!data && !error && <p className="mt-8 text-sm text-muted">Loading your trackers…</p>}
-
-      {data?.perfect && (
-        <div className="mt-6 rounded-2xl bg-teal px-4 py-3 text-white shadow-card">
-          <div className="font-semibold">Perfect day</div>
-          <p className="text-sm text-teal-100">Every due tracker is in Done. That is a leap.</p>
+      {filterOpen && (
+        <div className="flex flex-wrap gap-2 border-b border-black/5 bg-white px-4 py-3">
+          <FilterChip active={!tagId} onClick={() => setTagId("")}>
+            All
+          </FilterChip>
+          {tags.map((tag) => (
+            <FilterChip key={tag.id} active={tagId === tag.id} onClick={() => setTagId(tag.id)} color={tag.color}>
+              {tag.name}
+            </FilterChip>
+          ))}
         </div>
       )}
 
+      {error && <p className="px-4 py-3 text-sm text-bad">{error}</p>}
+      {!data && !error && <p className="px-4 py-8 text-center text-sm text-muted">Loading your trackers…</p>}
+
       {empty && (
-        <div className="card mt-6 p-6 text-center">
-          <div className="text-3xl">🎯</div>
+        <div className="mx-4 mt-8 rounded-2xl bg-white px-5 py-10 text-center shadow-card">
+          <div className="text-4xl">🎯</div>
           <h2 className="mt-3 text-lg font-semibold">Nothing due on this day</h2>
           <p className="mt-1 text-sm text-muted">Create a habit, target, average, or project to start tracking.</p>
-          <div className="mt-4 flex justify-center gap-2">
-            <Link href="/create" className="rounded-full bg-teal px-4 py-2 text-sm font-semibold text-white">
+          <div className="mt-5 flex justify-center gap-2">
+            <a href="/create" className="rounded-full bg-ios px-4 py-2 text-sm font-semibold text-white">
               Create tracker
-            </Link>
+            </a>
             <button
               type="button"
-              className="rounded-full bg-stone-100 px-4 py-2 text-sm font-semibold"
+              className="rounded-full bg-fill px-4 py-2 text-sm font-semibold"
               onClick={async () => {
                 await api("/api/data", { method: "POST" });
                 await load();
@@ -99,15 +143,14 @@ export function TodayView() {
         </div>
       )}
 
-      {data && (
-        <div className="mt-6 space-y-8">
-          <Section title="Due" count={data.due.length} empty="All caught up.">
-            {data.due.map((item) => (
+      {data && !empty && (
+        <div className="pb-4">
+          <Section title="Due" count={due.length}>
+            {due.map((item) => (
               <TrackerCard
                 key={item.tracker.id}
                 item={item}
                 onYes={() => void log(item, item.tracker.isBad ? "no" : "yes")}
-                onNo={() => void log(item, item.tracker.isBad ? "yes" : "no")}
                 onSkip={() => void log(item, "skip")}
                 onUndo={() => void undo(item)}
                 onLog={() => setLogging(item)}
@@ -118,13 +161,12 @@ export function TodayView() {
               />
             ))}
           </Section>
-          <Section title="Missed" count={data.missed.length}>
-            {data.missed.map((item) => (
+          <Section title="Missed" count={missed.length}>
+            {missed.map((item) => (
               <TrackerCard
                 key={item.tracker.id}
                 item={item}
                 onYes={() => undefined}
-                onNo={() => undefined}
                 onSkip={() => undefined}
                 onUndo={() => void undo(item)}
                 onLog={() => setLogging(item)}
@@ -132,13 +174,12 @@ export function TodayView() {
               />
             ))}
           </Section>
-          <Section title="Done" count={data.done.length}>
-            {data.done.map((item) => (
+          <Section title="Done" count={done.length}>
+            {done.map((item) => (
               <TrackerCard
                 key={item.tracker.id}
                 item={item}
                 onYes={() => undefined}
-                onNo={() => undefined}
                 onSkip={() => undefined}
                 onUndo={() => void undo(item)}
                 onLog={() => setLogging(item)}
@@ -162,29 +203,52 @@ export function TodayView() {
           await log(logging, "value", value, note);
         }}
       />
+
+      <PerfectDay
+        open={celebrate && Boolean(data?.perfect)}
+        count={done.length}
+        onClose={() => setCelebrate(false)}
+      />
     </div>
   );
 }
 
-function Section({
-  title,
-  count,
-  empty,
-  children,
-}: {
-  title: string;
-  count: number;
-  empty?: string;
-  children: React.ReactNode;
-}) {
-  if (count === 0 && !empty) return null;
+function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+  if (count === 0) return null;
   return (
-    <section>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{title}</h2>
-        <span className="text-xs font-semibold text-muted">{count}</span>
+    <section className="mt-4">
+      <div className="flex items-center justify-between px-4 pb-1.5">
+        <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted">{title}</h2>
+        <span className="text-[12px] font-semibold text-muted">{count}</span>
       </div>
-      <div className="space-y-3">{count ? children : <p className="text-sm text-muted">{empty}</p>}</div>
+      <div className="divide-y divide-black/[0.06] border-y border-black/[0.06] bg-white">{children}</div>
     </section>
+  );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  children,
+  color,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  color?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full px-3 py-1 text-[12px] font-semibold"
+      style={
+        active
+          ? { background: color || "#007aff", color: "white" }
+          : { background: "#f2f2f7", color: "#163a73" }
+      }
+    >
+      {children}
+    </button>
   );
 }

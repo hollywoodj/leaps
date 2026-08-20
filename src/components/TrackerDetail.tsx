@@ -1,16 +1,18 @@
 "use client";
 
 import { CalendarHeatmap } from "@/components/CalendarHeatmap";
-import { LineChart } from "@/components/Charts";
+import { CompareBars, DailyBars, LineChart, RingStat } from "@/components/Charts";
 import { LogValueModal } from "@/components/LogValueModal";
-import { ProgressBar, StatChip } from "@/components/ProgressBar";
+import { HeaderButton, NavHeader } from "@/components/NavHeader";
+import { ProgressBar } from "@/components/ProgressBar";
 import { api } from "@/lib/client";
-import { formatPretty, todayISO } from "@/lib/dates";
 import { TRACKER_COLORS } from "@/lib/colors";
-import type { TrackerDetail as Detail, RepeatKind, Tag, TrackerType } from "@/lib/types";
+import { addDays, formatPretty, formatShort, startOfWeek, todayISO } from "@/lib/dates";
+import { frequencyLabel } from "@/lib/labels";
+import { formatAmount, formatNumber } from "@/lib/stats";
+import type { RepeatKind, Tag, TrackerDetail as Detail, TrackerType } from "@/lib/types";
 import clsx from "clsx";
-import { ArrowLeft, Check } from "lucide-react";
-import Link from "next/link";
+import { Check, ChevronLeft, Share } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -24,11 +26,13 @@ const WEEKDAYS = [
   { n: 6, l: "S" },
 ];
 
+const TABS = ["Charts", "History", "Notes", "Settings"] as const;
+
 export function TrackerDetail() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [data, setData] = useState<Detail | null>(null);
-  const [tab, setTab] = useState<"overview" | "history" | "settings">("overview");
+  const [tab, setTab] = useState<(typeof TABS)[number]>("Charts");
   const [error, setError] = useState<string | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [tags, setTags] = useState<Tag[]>([]);
@@ -53,146 +57,77 @@ export function TrackerDetail() {
   if (error) {
     return (
       <div>
-        <p className="text-sm text-bad">{error}</p>
-        <Link href="/" className="mt-3 inline-block text-sm font-semibold text-teal">Back to Today</Link>
+        <NavHeader
+          title="Tracker"
+          left={
+            <HeaderButton href="/" label="Back">
+              <ChevronLeft size={26} />
+            </HeaderButton>
+          }
+        />
+        <p className="px-4 py-6 text-sm text-bad">{error}</p>
       </div>
     );
   }
-  if (!data) return <p className="text-sm text-muted">Loading tracker…</p>;
+
+  if (!data) {
+    return (
+      <div>
+        <NavHeader title="Tracker" />
+        <p className="px-4 py-8 text-center text-sm text-muted">Loading tracker…</p>
+      </div>
+    );
+  }
 
   const { tracker, progress } = data;
   const date = todayISO();
 
   return (
     <div>
-      <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-muted">
-        <ArrowLeft size={16} /> Today
-      </Link>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-4xl">{tracker.emoji}</div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">{tracker.title}</h1>
-          <p className="mt-1 text-sm capitalize text-muted">{tracker.type}{tracker.isBad ? " · bad habit" : ""}</p>
-        </div>
-        {tracker.type !== "project" && (
-          <button
-            type="button"
-            onClick={() => setLogOpen(true)}
-            className="rounded-full px-4 py-2 text-sm font-semibold text-white"
-            style={{ background: tracker.color }}
+      <NavHeader
+        title={`${tracker.title} ${tracker.emoji}`}
+        subtitle={frequencyLabel(tracker)}
+        left={
+          <HeaderButton href="/" label="Back">
+            <ChevronLeft size={26} />
+          </HeaderButton>
+        }
+        right={
+          <HeaderButton
+            label="Share"
+            onClick={async () => {
+              const text = `${tracker.title}: ${progress.label}`;
+              if (navigator.share) await navigator.share({ title: tracker.title, text });
+              else await navigator.clipboard.writeText(text);
+            }}
           >
-            Log
-          </button>
-        )}
-      </div>
+            <Share size={18} />
+          </HeaderButton>
+        }
+        tabs={[...TABS]}
+        activeTab={tab}
+        onTab={(next) => setTab(next as (typeof TABS)[number])}
+      />
 
-      <div className="card mt-5 p-4">
-        <ProgressBar percent={progress.percent} pacePercent={progress.pacePercent} color={tracker.color} onTrack={progress.onTrack} />
-        <p className="mt-2 text-sm text-muted">{progress.label}</p>
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <StatChip label="Streak" value={`${progress.streak}d`} />
-          <StatChip label="Best" value={`${progress.bestStreak}d`} />
-          <StatChip label="Success" value={`${Math.round(progress.successRate * 100)}%`} />
-        </div>
-      </div>
-
-      <div className="mt-5 flex gap-1 rounded-2xl bg-white p-1 shadow-card">
-        {(["overview", "history", "settings"] as const).map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={clsx("flex-1 rounded-xl px-2 py-2 text-xs font-semibold capitalize", tab === id ? "bg-stone-100" : "text-muted")}
-          >
-            {id}
-          </button>
-        ))}
-      </div>
-
-      {tab === "overview" && (
-        <div className="mt-4 space-y-4">
-          {tracker.type === "habit" ? (
-            <div className="card p-4">
-              <h2 className="mb-3 text-sm font-semibold">Calendar</h2>
-              <CalendarHeatmap
-                days={data.calendar.map((d) => ({
-                  date: d.date,
-                  percent: d.status === "skip" ? 0 : d.value > 0 || d.status === "yes" || (tracker.isBad && d.status === "no") ? 100 : d.status === "no" ? 20 : 0,
-                }))}
-              />
-            </div>
-          ) : (
-            <div className="card p-4">
-              <h2 className="mb-3 text-sm font-semibold">Progress vs pace</h2>
-              <LineChart series={data.series} color={tracker.color} />
-              <p className="mt-2 text-xs text-muted">Solid line is actual. Dashed line is the pace you need to stay on track.</p>
-            </div>
-          )}
-          {tracker.type === "project" && (
-            <div className="card p-4">
-              <h2 className="mb-3 text-sm font-semibold">Milestones</h2>
-              <ul className="space-y-2">
-                {data.milestones.map((m) => (
-                  <li key={m.id}>
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 text-left"
-                      onClick={async () => {
-                        await api(`/api/milestones/${m.id}/toggle`, { method: "POST", body: JSON.stringify({ date }) });
-                        await load();
-                      }}
-                    >
-                      <span
-                        className="flex h-5 w-5 items-center justify-center rounded-md border"
-                        style={m.completed ? { background: tracker.color, borderColor: tracker.color, color: "white" } : undefined}
-                      >
-                        {m.completed ? <Check size={12} /> : null}
-                      </span>
-                      <span className={m.completed ? "text-muted line-through" : ""}>{m.title}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+      {tab === "Charts" && <ChartsPane data={data} onToggleMilestone={async (id) => {
+        await api(`/api/milestones/${id}/toggle`, { method: "POST", body: JSON.stringify({ date }) });
+        await load();
+      }} />}
+      {tab === "History" && <HistoryPane data={data} onDeleted={load} />}
+      {tab === "Notes" && <NotesPane data={data} onSaved={load} />}
+      {tab === "Settings" && (
+        <SettingsForm data={data} tags={tags} onSaved={load} onDeleted={() => router.push("/")} />
       )}
 
-      {tab === "history" && (
-        <div className="mt-4 space-y-2">
-          {data.logs.length === 0 && <p className="text-sm text-muted">No logs yet.</p>}
-          {data.logs.map((entry) => (
-            <div key={entry.id} className="card flex items-center justify-between gap-3 p-3">
-              <div>
-                <div className="text-sm font-semibold">{formatPretty(entry.date, { month: "short", day: "numeric", year: "numeric" })}</div>
-                <div className="text-xs text-muted">
-                  {entry.status} · {entry.value}
-                  {tracker.unit ? ` ${tracker.unit}` : ""}
-                  {entry.note ? ` · ${entry.note}` : ""}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="text-xs font-semibold text-bad"
-                onClick={async () => {
-                  await api(`/api/logs/${entry.id}`, { method: "DELETE" });
-                  await load();
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {tab === "settings" && (
-        <SettingsForm
-          data={data}
-          tags={tags}
-          onSaved={load}
-          onDeleted={() => router.push("/")}
-        />
+      {tracker.type !== "project" && tab === "Charts" && (
+        <button
+          type="button"
+          onClick={() => setLogOpen(true)}
+          className="absolute bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-navy text-2xl text-white shadow-card"
+          aria-label="Log"
+        >
+          +
+        </button>
       )}
 
       <LogValueModal
@@ -209,6 +144,208 @@ export function TrackerDetail() {
           await load();
         }}
       />
+    </div>
+  );
+}
+
+function ChartsPane({
+  data,
+  onToggleMilestone,
+}: {
+  data: Detail;
+  onToggleMilestone: (id: string) => void;
+}) {
+  const { tracker, progress } = data;
+  const recent = data.calendar.slice(-14);
+  const weekStart = startOfWeek(todayISO());
+  const prevStart = addDays(weekStart, -7);
+  const thisWeek = data.calendar.filter((d) => d.date >= weekStart);
+  const lastWeek = data.calendar.filter((d) => d.date >= prevStart && d.date < weekStart);
+  const avg = (rows: typeof data.calendar) => {
+    const logged = rows.filter((d) => d.value > 0 || d.status);
+    if (!logged.length) return 0;
+    return logged.reduce((s, d) => s + d.value, 0) / logged.length;
+  };
+  const currentAvg = tracker.type === "average" ? progress.current : avg(thisWeek);
+  const previousAvg = avg(lastWeek);
+
+  return (
+    <div className="bg-white px-4 py-4">
+      {tracker.type === "habit" ? (
+        <>
+          <CalendarHeatmap
+            days={data.calendar.map((d) => ({
+              date: d.date,
+              percent:
+                d.status === "skip"
+                  ? 0
+                  : d.value > 0 || d.status === "yes" || (tracker.isBad && d.status === "no")
+                    ? 100
+                    : d.status === "no"
+                      ? 20
+                      : 0,
+            }))}
+          />
+          <div className="mt-6 flex items-center justify-between px-2">
+            <div className="text-center">
+              <div className="text-[12px] font-medium text-ios">Current Streak</div>
+              <div className="text-[32px] font-bold leading-none text-label">{progress.streak}</div>
+              <div className="text-[12px] text-ios">days</div>
+            </div>
+            <RingStat
+              label={progress.percent >= 100 ? "Goal Met" : "Goal"}
+              value={`${Math.round(Math.min(progress.successRate * 100, 100))}%`}
+              detail={`${Math.round(progress.successRate * 100) === 100 ? `${progress.streak}/${progress.streak}` : `${Math.round(progress.successRate * 30)}`} days`}
+              percent={progress.successRate * 100}
+            />
+            <div className="text-center">
+              <div className="text-[12px] font-medium text-ios">Best Streak</div>
+              <div className="text-[32px] font-bold leading-none text-label">{progress.bestStreak}</div>
+              <div className="text-[12px] text-ios">days</div>
+            </div>
+          </div>
+          <div className="mt-6">
+            <DailyBars
+              days={recent.map((d) => ({
+                date: d.date,
+                value: d.value,
+                ok: d.status === "yes" || (tracker.isBad && d.status === "no") || d.value >= tracker.timesPerPeriod,
+              }))}
+              goal={tracker.timesPerPeriod}
+            />
+          </div>
+        </>
+      ) : tracker.type === "average" ? (
+        <>
+          <div className="mb-3 text-center text-[15px] font-semibold text-navy">Average 7 Days</div>
+          <CompareBars
+            current={currentAvg}
+            previous={previousAvg}
+            currentLabel={`${formatNumber(currentAvg)} avg / day`}
+            previousLabel={`${formatNumber(previousAvg)} avg / day`}
+            currentRange={`${formatShort(weekStart)} - ${formatShort(todayISO())}`}
+            previousRange={`${formatShort(prevStart)} - ${formatShort(addDays(weekStart, -1))}`}
+          />
+          <div className="mt-6 flex items-center justify-between px-2">
+            <div className="text-center">
+              <div className="text-[12px] font-medium text-ios">Current Streak</div>
+              <div className="text-[32px] font-bold leading-none">{progress.streak}</div>
+              <div className="text-[12px] text-ios">days</div>
+            </div>
+            <RingStat
+              label="Average"
+              value={formatNumber(progress.current)}
+              detail={progress.onTrack ? `${formatNumber(Math.max(0, progress.current - progress.goal))} over` : `${formatNumber(Math.max(0, progress.goal - progress.current))} under`}
+              percent={progress.percent}
+              positive={progress.onTrack}
+            />
+            <div className="text-center">
+              <div className="text-[12px] font-medium text-ios">Success Rate</div>
+              <div className="text-[32px] font-bold leading-none">{Math.round(progress.successRate * 100)}%</div>
+              <div className="text-[12px] text-muted">{Math.round(progress.successRate * 30)}/30 days</div>
+            </div>
+          </div>
+          <div className="mt-6">
+            <DailyBars
+              days={recent.map((d) => ({ date: d.date, value: d.value, ok: tracker.isBad ? d.value <= tracker.goalValue : d.value >= tracker.goalValue }))}
+              goal={tracker.goalValue}
+            />
+          </div>
+        </>
+      ) : tracker.type === "project" ? (
+        <div>
+          <ProgressBar percent={progress.percent} pacePercent={progress.pacePercent} onTrack={progress.onTrack} />
+          <p className="mt-2 text-sm text-muted">{progress.label}</p>
+          <ul className="mt-4 space-y-3">
+            {data.milestones.map((m) => (
+              <li key={m.id}>
+                <button type="button" className="flex w-full items-center gap-3 text-left" onClick={() => onToggleMilestone(m.id)}>
+                  <span
+                    className="flex h-6 w-6 items-center justify-center rounded-full border"
+                    style={m.completed ? { background: "#34c759", borderColor: "#34c759", color: "white" } : undefined}
+                  >
+                    {m.completed ? <Check size={14} /> : null}
+                  </span>
+                  <span className="flex-1">
+                    <span className={clsx("block text-[15px]", m.completed && "text-muted line-through")}>{m.title}</span>
+                    {m.dueDate && <span className="text-[12px] text-ios">{formatPretty(m.dueDate)}</span>}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <>
+          <ProgressBar percent={progress.percent} pacePercent={progress.pacePercent} onTrack={progress.onTrack} />
+          <p className="mt-2 text-sm text-muted">{progress.label} · {progress.onTrack ? "On pace" : "Behind pace"}</p>
+          <div className="mt-4">
+            <LineChart series={data.series} color={tracker.color} />
+            <p className="mt-2 text-[12px] text-muted">Solid line is actual. Dashed line is the pace you need to stay on track.</p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function HistoryPane({ data, onDeleted }: { data: Detail; onDeleted: () => Promise<void> }) {
+  const { tracker } = data;
+  return (
+    <div className="divide-y divide-black/[0.06] bg-white">
+      {data.logs.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted">No logs yet.</p>}
+      {data.logs.map((entry) => (
+        <div key={entry.id} className="flex items-center justify-between gap-3 px-4 py-3">
+          <div>
+            <div className="text-[15px] font-semibold">{formatPretty(entry.date, { month: "short", day: "numeric", year: "numeric" })}</div>
+            <div className="text-[12px] text-muted">
+              {entry.status === "skip" ? "Skipped" : entry.status === "yes" ? "Yes" : entry.status === "no" ? "No" : formatAmount(entry.value, tracker.unit)}
+              {entry.note ? ` · ${entry.note}` : ""}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="text-[13px] font-semibold text-bad"
+            onClick={async () => {
+              await api(`/api/logs/${entry.id}`, { method: "DELETE" });
+              await onDeleted();
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NotesPane({ data, onSaved }: { data: Detail; onSaved: () => Promise<void> }) {
+  const [notes, setNotes] = useState(data.tracker.notes);
+  const [saving, setSaving] = useState(false);
+  return (
+    <div className="bg-white px-4 py-4">
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Add a note about this goal…"
+        className="h-48 w-full resize-none rounded-xl bg-grouped px-3 py-3 text-[15px] outline-none"
+      />
+      <button
+        type="button"
+        disabled={saving}
+        className="mt-3 w-full rounded-xl bg-ios py-3 text-[16px] font-semibold text-white"
+        onClick={async () => {
+          setSaving(true);
+          try {
+            await api(`/api/trackers/${data.tracker.id}`, { method: "PATCH", body: JSON.stringify({ notes }) });
+            await onSaved();
+          } finally {
+            setSaving(false);
+          }
+        }}
+      >
+        Save note
+      </button>
     </div>
   );
 }
@@ -235,7 +372,6 @@ function SettingsForm({
   const [weekdays, setWeekdays] = useState<number[]>(t.weekdays ?? []);
   const [startDate, setStartDate] = useState(t.startDate);
   const [endDate, setEndDate] = useState(t.endDate ?? "");
-  const [notes, setNotes] = useState(t.notes);
   const [isBad, setIsBad] = useState(t.isBad);
   const [tagIds, setTagIds] = useState(data.tags.map((tag) => tag.id));
   const [saving, setSaving] = useState(false);
@@ -256,7 +392,6 @@ function SettingsForm({
           weekdays: repeatKind === "weekly" ? weekdays : null,
           startDate,
           endDate: endDate || null,
-          notes,
           isBad,
           tagIds,
           type: t.type as TrackerType,
@@ -269,94 +404,100 @@ function SettingsForm({
   }
 
   return (
-    <div className="card mt-4 space-y-4 p-4">
-      <Field label="Title">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} className="field" />
-      </Field>
-      <Field label="Emoji">
-        <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className="field" />
-      </Field>
-      <Field label="Color">
-        <div className="flex flex-wrap gap-2">
-          {TRACKER_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setColor(c)}
-              className={clsx("h-7 w-7 rounded-full", color === c && "ring-2 ring-offset-2 ring-ink")}
-              style={{ background: c }}
-            />
-          ))}
+    <div className="space-y-6 bg-grouped pb-8">
+      <Group>
+        <Field label="Title">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} className="field-ios" />
+        </Field>
+        <Field label="Emoji">
+          <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className="field-ios" />
+        </Field>
+        <div className="px-4 py-3">
+          <div className="mb-2 text-[13px] text-muted">Color</div>
+          <div className="flex flex-wrap gap-2">
+            {TRACKER_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setColor(c)}
+                className={clsx("h-7 w-7 rounded-full", color === c && "ring-2 ring-offset-2 ring-ios")}
+                style={{ background: c }}
+              />
+            ))}
+          </div>
         </div>
-      </Field>
-      <Field label="Unit">
-        <input value={unit} onChange={(e) => setUnit(e.target.value)} className="field" placeholder="miles, pages, $" />
-      </Field>
-      <Field label={t.isBad || t.type !== "habit" ? "Goal / limit" : "Times per period"}>
-        <input
-          value={t.type === "habit" && !t.isBad ? timesPerPeriod : goalValue}
-          onChange={(e) => (t.type === "habit" && !t.isBad ? setTimesPerPeriod(e.target.value) : setGoalValue(e.target.value))}
-          className="field"
-        />
-      </Field>
-      <Field label="Repeat">
-        <select value={repeatKind} onChange={(e) => setRepeatKind(e.target.value as RepeatKind)} className="field">
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
-        </select>
-      </Field>
-      {repeatKind === "weekly" && (
-        <div className="flex gap-1">
-          {WEEKDAYS.map((d) => (
-            <button
-              key={d.n}
-              type="button"
-              onClick={() => setWeekdays((curr) => (curr.includes(d.n) ? curr.filter((x) => x !== d.n) : [...curr, d.n]))}
-              className={clsx("h-9 w-9 rounded-full text-xs font-bold", weekdays.includes(d.n) ? "bg-ink text-white" : "bg-stone-100")}
-            >
-              {d.l}
-            </button>
-          ))}
-        </div>
-      )}
-      <Field label="Start">
-        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field" />
-      </Field>
-      <Field label="Deadline">
-        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="field" />
-      </Field>
-      {t.type === "habit" && (
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={isBad} onChange={(e) => setIsBad(e.target.checked)} />
-          Bad habit (track a limit)
-        </label>
-      )}
-      <Field label="Notes">
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="field h-20" />
-      </Field>
+      </Group>
+      <Group>
+        <Field label="Unit">
+          <input value={unit} onChange={(e) => setUnit(e.target.value)} className="field-ios" placeholder="miles, pages, $" />
+        </Field>
+        <Field label={t.isBad || t.type !== "habit" ? "Goal / limit" : "Times per period"}>
+          <input
+            value={t.type === "habit" && !t.isBad ? timesPerPeriod : goalValue}
+            onChange={(e) => (t.type === "habit" && !t.isBad ? setTimesPerPeriod(e.target.value) : setGoalValue(e.target.value))}
+            className="field-ios"
+          />
+        </Field>
+        <Field label="Repeat">
+          <select value={repeatKind} onChange={(e) => setRepeatKind(e.target.value as RepeatKind)} className="field-ios">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </Field>
+        {repeatKind === "weekly" && (
+          <div className="flex gap-1 px-4 py-3">
+            {WEEKDAYS.map((d) => (
+              <button
+                key={d.n}
+                type="button"
+                onClick={() => setWeekdays((curr) => (curr.includes(d.n) ? curr.filter((x) => x !== d.n) : [...curr, d.n]))}
+                className={clsx("h-9 w-9 rounded-full text-xs font-bold", weekdays.includes(d.n) ? "bg-ios text-white" : "bg-grouped")}
+              >
+                {d.l}
+              </button>
+            ))}
+          </div>
+        )}
+        <Field label="Start">
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field-ios" />
+        </Field>
+        <Field label="Deadline">
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="field-ios" />
+        </Field>
+        {t.type === "habit" && (
+          <label className="flex items-center justify-between px-4 py-3 text-[15px]">
+            Bad habit
+            <input type="checkbox" checked={isBad} onChange={(e) => setIsBad(e.target.checked)} />
+          </label>
+        )}
+      </Group>
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <button
-              key={tag.id}
-              type="button"
-              onClick={() => setTagIds((curr) => (curr.includes(tag.id) ? curr.filter((id) => id !== tag.id) : [...curr, tag.id]))}
-              className={clsx("rounded-full px-3 py-1 text-xs font-semibold", tagIds.includes(tag.id) ? "text-white" : "bg-stone-100")}
-              style={tagIds.includes(tag.id) ? { background: tag.color } : undefined}
-            >
-              {tag.name}
-            </button>
-          ))}
-        </div>
+        <Group>
+          <div className="flex flex-wrap gap-2 px-4 py-3">
+            {tags.map((tag) => (
+              <button
+                key={tag.id}
+                type="button"
+                onClick={() => setTagIds((curr) => (curr.includes(tag.id) ? curr.filter((id) => id !== tag.id) : [...curr, tag.id]))}
+                className={clsx("rounded-full px-3 py-1 text-xs font-semibold", tagIds.includes(tag.id) ? "text-white" : "bg-grouped")}
+                style={tagIds.includes(tag.id) ? { background: tag.color } : undefined}
+              >
+                {tag.name}
+              </button>
+            ))}
+          </div>
+        </Group>
       )}
-      <button type="button" disabled={saving} onClick={() => void save()} className="w-full rounded-xl bg-teal py-3 text-sm font-semibold text-white">
-        Save settings
-      </button>
-      <div className="flex gap-2">
+      <div className="px-4">
+        <button type="button" disabled={saving} onClick={() => void save()} className="w-full rounded-xl bg-ios py-3 text-[16px] font-semibold text-white">
+          Save
+        </button>
+      </div>
+      <Group>
         <button
           type="button"
-          className="flex-1 rounded-xl bg-stone-100 py-2 text-sm font-semibold"
+          className="w-full px-4 py-3 text-left text-[15px] text-navy"
           onClick={async () => {
             await api(`/api/trackers/${t.id}`, { method: "PATCH", body: JSON.stringify({ archived: !t.archived }) });
             await onSaved();
@@ -366,35 +507,39 @@ function SettingsForm({
         </button>
         <button
           type="button"
-          className="flex-1 rounded-xl bg-stone-100 py-2 text-sm font-semibold"
+          className="w-full px-4 py-3 text-left text-[15px] text-navy"
           onClick={async () => {
             await api(`/api/trackers/${t.id}/start-over`, { method: "POST" });
             await onSaved();
           }}
         >
-          Start over
+          Start Over
         </button>
-      </div>
-      <button
-        type="button"
-        className="w-full text-sm font-semibold text-bad"
-        onClick={async () => {
-          if (!confirm("Delete this tracker and its logs?")) return;
-          await api(`/api/trackers/${t.id}`, { method: "DELETE" });
-          onDeleted();
-        }}
-      >
-        Delete tracker
-      </button>
+        <button
+          type="button"
+          className="w-full px-4 py-3 text-left text-[15px] text-bad"
+          onClick={async () => {
+            if (!confirm("Delete this tracker and its logs?")) return;
+            await api(`/api/trackers/${t.id}`, { method: "DELETE" });
+            onDeleted();
+          }}
+        >
+          Delete Tracker
+        </button>
+      </Group>
     </div>
   );
 }
 
+function Group({ children }: { children: React.ReactNode }) {
+  return <div className="divide-y divide-black/[0.06] border-y border-black/[0.06] bg-white">{children}</div>;
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block text-xs font-semibold uppercase tracking-wide text-muted">
-      {label}
-      <div className="mt-1">{children}</div>
+    <label className="flex items-center justify-between gap-3 px-4 py-3 text-[15px]">
+      <span className="shrink-0 text-muted">{label}</span>
+      <div className="min-w-0 flex-1 text-right">{children}</div>
     </label>
   );
 }
