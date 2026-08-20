@@ -14,7 +14,7 @@ const utils = require("../../electron/backend-utils.cjs") as {
     packaged: boolean;
   }) => Record<string, string>;
   createLogBuffer: () => { chunks: string[] };
-  formatBackendError: (input: { code?: number | null; logs?: string; serverJs: string; cause?: string }) => string;
+  formatBackendError: (input: { code?: number | null; logs?: string; serverJs: string; cause?: string; logFile?: string }) => string;
   logsText: (buffer: { chunks: string[] }) => string;
   nativeModulesToCopy: () => string[];
   sanitizeEnv: (env: Record<string, string | null | undefined>) => Record<string, string>;
@@ -51,6 +51,7 @@ describe("backend env", () => {
     expect(env.HOST).toBe("127.0.0.1");
     expect(env.HOSTNAME).toBe("127.0.0.1");
     expect(env.ELECTRON_RUN_AS_NODE).toBe("1");
+    expect(env.ELECTRON_NO_ASAR).toBe("1");
     expect(env.LEAPS_DB_PATH).toContain("leaps.db");
     expect(env.NODE_ENV).toBe("production");
   });
@@ -64,6 +65,7 @@ describe("backend env", () => {
       packaged: false,
     });
     expect(env.ELECTRON_RUN_AS_NODE).toBeUndefined();
+    expect(env.ELECTRON_NO_ASAR).toBeUndefined();
   });
 });
 
@@ -108,9 +110,11 @@ describe("spawn and errors", () => {
       code: 1,
       logs: "Error: Cannot find module 'better-sqlite3'\n",
       serverJs: "C:\\app\\resources\\standalone\\server.js",
+      logFile: "C:\\Users\\dev\\AppData\\Roaming\\Leaps\\data\\startup.log",
     });
     expect(message).toContain("exited with code 1");
     expect(message).toContain("Cannot find module 'better-sqlite3'");
+    expect(message).toContain("startup.log");
   });
 
   it("trims captured logs to a bounded buffer", () => {

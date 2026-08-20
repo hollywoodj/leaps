@@ -1,13 +1,20 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { afterEach, describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
-const { copyNativeModules, packagedResourcesDir } = require("../../scripts/copy-native-modules.cjs") as {
+const {
+  copyNativeModules,
+  packagedResourcesDir,
+  removeSqlitePackages,
+  replaceSqliteAddons,
+} = require("../../scripts/copy-native-modules.cjs") as {
   copyNativeModules: (fromDir: string, toDir: string) => string[];
   packagedResourcesDir: (appOutDir: string, electronPlatformName: string) => string;
+  removeSqlitePackages: (root: string) => string[];
+  replaceSqliteAddons: (root: string, rebuiltAddon: string) => string[];
 };
 
 const temps: string[] = [];
@@ -41,6 +48,33 @@ describe("copyNativeModules", () => {
 
   it("fails if a required native package is missing", () => {
     expect(() => copyNativeModules(join(tempDir(), "empty"), join(tempDir(), "to"))).toThrow(/Native module missing/);
+  });
+
+  it("removes traced sqlite packages including hashed copies", () => {
+    const root = tempDir();
+    mkdirSync(join(root, "node_modules", "better-sqlite3"), { recursive: true });
+    mkdirSync(join(root, ".next", "node_modules", "better-sqlite3-abc123"), { recursive: true });
+    writeFileSync(join(root, "node_modules", "better-sqlite3", "index.js"), "old");
+    writeFileSync(join(root, ".next", "node_modules", "better-sqlite3-abc123", "index.js"), "hashed");
+    const removed = removeSqlitePackages(root);
+    expect(removed.length).toBe(2);
+    expect(existsSync(join(root, "node_modules", "better-sqlite3"))).toBe(false);
+    expect(existsSync(join(root, ".next", "node_modules", "better-sqlite3-abc123"))).toBe(false);
+  });
+
+  it("overwrites leftover sqlite addons with the Electron-rebuilt binary", () => {
+    const root = tempDir();
+    const hashed = join(root, ".next", "node_modules", "better-sqlite3-hash", "build", "Release");
+    mkdirSync(hashed, { recursive: true });
+    writeFileSync(join(hashed, "better_sqlite3.node"), "node-abi");
+    const rebuilt = join(tempDir(), "better_sqlite3.node");
+    writeFileSync(rebuilt, "electron-abi");
+    const replaced = replaceSqliteAddons(root, rebuilt);
+    expect(readFileSync(join(hashed, "better_sqlite3.node"), "utf8")).toBe("electron-abi");
+    expect(readFileSync(join(root, "node_modules", "better-sqlite3", "build", "Release", "better_sqlite3.node"), "utf8")).toBe(
+      "electron-abi",
+    );
+    expect(replaced.length).toBeGreaterThanOrEqual(2);
   });
 });
 
