@@ -20,6 +20,8 @@ if (existsSync(publicSrc)) {
 
 const nestedSqlite = join(standalone, "node_modules", "better-sqlite3");
 if (existsSync(nestedSqlite)) {
+  // Next.js traces a Node-ABI copy. Packaged apps replace it in afterPack with
+  // the Electron-rebuilt native module plus its loader packages.
   rmSync(nestedSqlite, { recursive: true, force: true });
 }
 

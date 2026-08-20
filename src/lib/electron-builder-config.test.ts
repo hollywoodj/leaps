@@ -23,4 +23,21 @@ describe("electron-builder config", () => {
     expect(linux).not.toHaveProperty("desktopName");
     expect(pkg.desktopName).toBe("Leaps");
   });
+
+  it("copies Electron-built sqlite into standalone after pack", () => {
+    expect(pkg.build.afterPack).toBe("./scripts/after-pack.cjs");
+    const unpacked = pkg.build.asarUnpack as string[];
+    expect(unpacked).toEqual(expect.arrayContaining(["**/better-sqlite3/**", "**/bindings/**", "**/file-uri-to-path/**"]));
+    const fuses = pkg.build.electronFuses as { runAsNode?: boolean };
+    expect(fuses.runAsNode).toBe(true);
+  });
+});
+
+describe("electron main process", () => {
+  it("does not inherit stdio from a GUI parent", () => {
+    const main = readFileSync(new URL("../../electron/main.cjs", import.meta.url), "utf8");
+    expect(main).not.toMatch(/stdio:\s*["']inherit["']/);
+    expect(main).toContain("utilityProcess.fork");
+    expect(main).toContain('stdio: "pipe"');
+  });
 });

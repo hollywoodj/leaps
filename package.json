@@ -73,8 +73,14 @@
     "asar": true,
     "asarUnpack": [
       "**/*.node",
-      "**/better-sqlite3/**"
+      "**/better-sqlite3/**",
+      "**/bindings/**",
+      "**/file-uri-to-path/**"
     ],
+    "afterPack": "./scripts/after-pack.cjs",
+    "electronFuses": {
+      "runAsNode": true
+    },
     "directories": {
       "output": "release",
       "buildResources": "build"
