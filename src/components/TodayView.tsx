@@ -7,7 +7,8 @@ import { PerfectDay } from "@/components/PerfectDay";
 import { TrackerCard } from "@/components/TrackerCard";
 import { api } from "@/lib/client";
 import { todayISO } from "@/lib/dates";
-import type { Tag, TodayItem } from "@/lib/types";
+import { classifyToday, sumValues } from "@/lib/stats";
+import type { LogEntry, LogStatus, Tag, TodayItem } from "@/lib/types";
 import { Settings, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -19,6 +20,92 @@ type TodayResponse = {
   perfect: boolean;
 };
 
+function allItems(data: TodayResponse): TodayItem[] {
+  return [...data.due, ...data.missed, ...data.done];
+}
+
+function bucket(date: string, items: TodayItem[]): TodayResponse {
+  const due: TodayItem[] = [];
+  const missed: TodayItem[] = [];
+  const done: TodayItem[] = [];
+  for (const item of items) {
+    if (item.section === "due") due.push(item);
+    else if (item.section === "missed") missed.push(item);
+    else done.push(item);
+  }
+  return { date, due, done, missed, perfect: due.length === 0 && missed.length === 0 && done.length > 0 };
+}
+
+function recategorize(item: TodayItem, date: string, todayLogs: LogEntry[], milestones = item.milestones): TodayItem {
+  const section = classifyToday(item.tracker, todayLogs, date, milestones);
+  return {
+    ...item,
+    todayLogs,
+    milestones,
+    todayValue: sumValues(todayLogs),
+    section: section === "hidden" ? item.section : section,
+  };
+}
+
+function optimisticLog(
+  data: TodayResponse,
+  item: TodayItem,
+  date: string,
+  status: LogStatus,
+  value?: number,
+  note?: string,
+): TodayResponse {
+  const log: LogEntry = {
+    id: `pending:${item.tracker.id}`,
+    trackerId: item.tracker.id,
+    date,
+    value: value ?? (status === "skip" || status === "no" ? 0 : 1),
+    status,
+    note: note ?? null,
+    createdAt: new Date().toISOString(),
+  };
+  let todayLogs = item.todayLogs;
+  if (status === "skip") {
+    todayLogs = [log];
+  } else if (
+    item.tracker.type === "habit" &&
+    status === "yes" &&
+    item.tracker.timesPerPeriod <= 1 &&
+    !item.tracker.isBad &&
+    item.todayLogs.some((entry) => entry.status !== "skip")
+  ) {
+    todayLogs = [];
+  } else {
+    todayLogs = [...item.todayLogs.filter((entry) => entry.status !== "skip"), log];
+  }
+  const next = recategorize(item, date, todayLogs);
+  return bucket(
+    date,
+    allItems(data).map((row) => (row.tracker.id === item.tracker.id ? next : row)),
+  );
+}
+
+function optimisticUndo(data: TodayResponse, item: TodayItem, date: string): TodayResponse {
+  const next = recategorize(item, date, []);
+  return bucket(
+    date,
+    allItems(data).map((row) => (row.tracker.id === item.tracker.id ? next : row)),
+  );
+}
+
+function optimisticMilestone(data: TodayResponse, item: TodayItem, date: string, milestoneId: string): TodayResponse {
+  const milestones = item.milestones.map((milestone) =>
+    milestone.id === milestoneId
+      ? { ...milestone, completed: !milestone.completed, completedAt: milestone.completed ? null : date }
+      : milestone,
+  );
+  const next = recategorize(item, date, item.todayLogs, milestones);
+  return bucket(
+    date,
+    allItems(data).map((row) => (row.tracker.id === item.tracker.id ? next : row)),
+  );
+}
+
 export function TodayView() {
   const [date, setDate] = useState(todayISO());
   const [data, setData] = useState<TodayResponse | null>(null);
@@ -29,6 +116,16 @@ export function TodayView() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const wasPerfect = useRef<boolean | null>(null);
+  const pending = useRef(new Set<string>());
+  const [busyIds, setBusyIds] = useState<string[]>([]);
+  const dataRef = useRef<TodayResponse | null>(null);
+  dataRef.current = data;
+
+  function setBusy(id: string, value: boolean) {
+    if (value) pending.current.add(id);
+    else pending.current.delete(id);
+    setBusyIds([...pending.current]);
+  }
 
   const load = useCallback(async () => {
     setError(null);
@@ -59,19 +156,63 @@ export function TodayView() {
   }, [data]);
 
   async function log(item: TodayItem, status: "yes" | "no" | "skip" | "value", value?: number, note?: string) {
-    await api(`/api/trackers/${item.tracker.id}/logs`, {
-      method: "POST",
-      body: JSON.stringify({ date, status, value, note }),
-    });
-    await load();
+    if (pending.current.has(item.tracker.id) || !dataRef.current) return;
+    const snapshot = dataRef.current;
+    const current = allItems(snapshot).find((row) => row.tracker.id === item.tracker.id) ?? item;
+    const next = optimisticLog(snapshot, current, date, status, value, note);
+    dataRef.current = next;
+    setBusy(item.tracker.id, true);
+    setData(next);
+    try {
+      await api(`/api/trackers/${item.tracker.id}/logs`, {
+        method: "POST",
+        body: JSON.stringify({ date, status, value, note }),
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save log");
+    } finally {
+      setBusy(item.tracker.id, false);
+      if (pending.current.size === 0) await load();
+    }
   }
 
   async function undo(item: TodayItem) {
-    await api(`/api/trackers/${item.tracker.id}/undo`, {
-      method: "POST",
-      body: JSON.stringify({ date }),
-    });
-    await load();
+    if (pending.current.has(item.tracker.id) || !dataRef.current) return;
+    const snapshot = dataRef.current;
+    const current = allItems(snapshot).find((row) => row.tracker.id === item.tracker.id) ?? item;
+    const next = optimisticUndo(snapshot, current, date);
+    dataRef.current = next;
+    setBusy(item.tracker.id, true);
+    setData(next);
+    try {
+      await api(`/api/trackers/${item.tracker.id}/undo`, {
+        method: "POST",
+        body: JSON.stringify({ date }),
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not undo");
+    } finally {
+      setBusy(item.tracker.id, false);
+      if (pending.current.size === 0) await load();
+    }
+  }
+
+  async function toggleMilestone(item: TodayItem, id: string) {
+    if (pending.current.has(item.tracker.id) || !dataRef.current) return;
+    const snapshot = dataRef.current;
+    const current = allItems(snapshot).find((row) => row.tracker.id === item.tracker.id) ?? item;
+    const next = optimisticMilestone(snapshot, current, date, id);
+    dataRef.current = next;
+    setBusy(item.tracker.id, true);
+    setData(next);
+    try {
+      await api(`/api/milestones/${id}/toggle`, { method: "POST", body: JSON.stringify({ date }) });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update milestone");
+    } finally {
+      setBusy(item.tracker.id, false);
+      if (pending.current.size === 0) await load();
+    }
   }
 
   const filtered = (items: TodayItem[]) =>
@@ -150,14 +291,12 @@ export function TodayView() {
               <TrackerCard
                 key={item.tracker.id}
                 item={item}
+                busy={busyIds.includes(item.tracker.id)}
                 onYes={() => void log(item, item.tracker.isBad ? "no" : "yes")}
                 onSkip={() => void log(item, "skip")}
                 onUndo={() => void undo(item)}
                 onLog={() => setLogging(item)}
-                onToggleMilestone={async (id) => {
-                  await api(`/api/milestones/${id}/toggle`, { method: "POST", body: JSON.stringify({ date }) });
-                  await load();
-                }}
+                onToggleMilestone={(id) => void toggleMilestone(item, id)}
               />
             ))}
           </Section>
@@ -166,6 +305,7 @@ export function TodayView() {
               <TrackerCard
                 key={item.tracker.id}
                 item={item}
+                busy={busyIds.includes(item.tracker.id)}
                 onYes={() => undefined}
                 onSkip={() => undefined}
                 onUndo={() => void undo(item)}
@@ -179,14 +319,12 @@ export function TodayView() {
               <TrackerCard
                 key={item.tracker.id}
                 item={item}
+                busy={busyIds.includes(item.tracker.id)}
                 onYes={() => undefined}
                 onSkip={() => undefined}
                 onUndo={() => void undo(item)}
                 onLog={() => setLogging(item)}
-                onToggleMilestone={async (id) => {
-                  await api(`/api/milestones/${id}/toggle`, { method: "POST", body: JSON.stringify({ date }) });
-                  await load();
-                }}
+                onToggleMilestone={(id) => void toggleMilestone(item, id)}
               />
             ))}
           </Section>

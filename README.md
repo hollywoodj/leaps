@@ -10,7 +10,7 @@ A desktop and web clone of [Strides](https://www.stridesapp.com/) — habits, nu
 - **Four tracker types** — Habit (good or bad), Target (pace line), Average, Project (milestones)
 - **Reports** — progress, trends, calendar heatmap, streak rankings, tag filters
 - **Templates** — health, fitness, money, learning, and more
-- **Local SQLite** — export JSON from Settings
+- **Local SQLite** — export and import JSON from Settings
 
 ## Run it
 
@@ -26,7 +26,7 @@ Or run the web UI only:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). On first launch the Today screen is empty; create a tracker or tap **Load sample data**.
+Open [http://localhost:3000](http://localhost:3000). The web server binds to localhost only. On first launch the Today screen is empty; create a tracker or tap **Load sample data**.
 
 ```bash
 npm run build

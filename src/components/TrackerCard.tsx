@@ -16,6 +16,7 @@ export function TrackerCard({
   onLog,
   onToggleMilestone,
   variant = "today",
+  busy = false,
 }: {
   item: TodayItem;
   onYes: () => void;
@@ -24,6 +25,7 @@ export function TrackerCard({
   onLog: () => void;
   onToggleMilestone: (id: string) => void;
   variant?: "today" | "reports";
+  busy?: boolean;
 }) {
   const { tracker, progress, section } = item;
   const done = section === "done";
@@ -31,7 +33,7 @@ export function TrackerCard({
   const skipped = done && item.todayLogs.some((l) => l.status === "skip");
 
   const row = (
-    <article className="bg-white px-4 py-3">
+    <article className={clsx("bg-white px-4 py-3", busy && "pointer-events-none opacity-60")}>
       <div className="flex items-center gap-3">
         {variant === "today" && (
           <CheckButton
@@ -87,7 +89,7 @@ export function TrackerCard({
   );
 
   return (
-    <SwipeRow enabled={variant === "today" && section === "due" && tracker.type === "habit"} onYes={onYes} onSkip={onSkip}>
+    <SwipeRow enabled={variant === "today" && section === "due" && tracker.type === "habit" && !busy} onYes={onYes} onSkip={onSkip}>
       {row}
     </SwipeRow>
   );
