@@ -10,7 +10,7 @@ import { frequencyLabel, reportMetrics } from "@/lib/labels";
 import { formatNumber } from "@/lib/stats";
 import type { ReportsPayload, Tag } from "@/lib/types";
 import clsx from "clsx";
-import { ChevronLeft, ChevronRight, Settings2, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -53,17 +53,6 @@ export function ReportsView() {
     return { done, due, avg: data.dayCount ? done / data.dayCount : 0 };
   }, [data]);
 
-  const periodLabel =
-    period === "all"
-      ? "All time"
-      : period === "week"
-        ? "This week"
-        : period === "year"
-          ? "This year"
-          : data
-            ? formatPretty(data.from, { month: "long", year: "numeric" })
-            : "This month";
-
   return (
     <div>
       <NavHeader
@@ -74,7 +63,7 @@ export function ReportsView() {
         ]}
         left={
           <HeaderButton href="/settings" label="Settings">
-            <Settings2 size={22} />
+            <Settings size={22} />
           </HeaderButton>
         }
         right={
@@ -143,7 +132,10 @@ export function ReportsView() {
       <div className="flex items-center justify-between bg-[#ececf1] px-4 py-2 text-[13px] font-medium text-label">
         <ChevronLeft size={16} className="text-muted" />
         <span>
-          {period === "month" ? "Month" : period === "week" ? "Week" : period === "year" ? "Year" : "All"}: {periodLabel}
+          {period === "month" ? "Month" : period === "week" ? "Week" : period === "year" ? "Year" : "All"}:{" "}
+          {period === "month" || period === "week" || period === "year"
+            ? formatPretty(data?.to ?? todayISO(), { month: "long", year: "numeric" })
+            : "All time"}
         </span>
         <ChevronRight size={16} className="text-muted" />
       </div>

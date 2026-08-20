@@ -112,7 +112,11 @@ function CheckButton({
     return (
       <button
         type="button"
-        onClick={onLog}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onLog();
+        }}
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white"
         style={{ background: tracker.color }}
         aria-label="Log value"
@@ -134,7 +138,11 @@ function CheckButton({
     return (
       <button
         type="button"
-        onClick={onUndo}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onUndo();
+        }}
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-good text-white"
         aria-label="Undo"
       >
@@ -146,7 +154,11 @@ function CheckButton({
   return (
     <button
       type="button"
-      onClick={onYes}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onYes();
+      }}
       className={clsx(
         "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-[2.5px]",
         missed ? "border-bad" : "border-fill",

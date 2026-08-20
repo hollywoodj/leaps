@@ -8,7 +8,7 @@ import { TrackerCard } from "@/components/TrackerCard";
 import { api } from "@/lib/client";
 import { todayISO } from "@/lib/dates";
 import type { Tag, TodayItem } from "@/lib/types";
-import { Settings2, SlidersHorizontal } from "lucide-react";
+import { Settings, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type TodayResponse = {
@@ -92,7 +92,7 @@ export function TodayView() {
         ]}
         left={
           <HeaderButton href="/settings" label="Settings">
-            <Settings2 size={22} />
+            <Settings size={22} />
           </HeaderButton>
         }
         right={

@@ -13,11 +13,19 @@ export function SwipeRow({
   onYes: () => void;
   onSkip: () => void;
 }) {
-  const start = useRef(0);
+  const startX = useRef(0);
+  const startY = useRef(0);
   const [dx, setDx] = useState(0);
   const dragging = useRef(false);
+  const axis = useRef<"h" | "v" | null>(null);
 
   if (!enabled) return <>{children}</>;
+
+  function reset() {
+    dragging.current = false;
+    axis.current = null;
+    setDx(0);
+  }
 
   return (
     <div className="relative overflow-hidden bg-white">
@@ -28,29 +36,40 @@ export function SwipeRow({
         Skip
       </div>
       <div
-        className="relative bg-white"
+        className="relative bg-white touch-pan-y"
         style={{ transform: `translateX(${dx}px)`, transition: dragging.current ? "none" : "transform 180ms ease" }}
         onPointerDown={(e) => {
+          if ((e.target as HTMLElement).closest("a, button, input, textarea, select")) return;
           if (e.pointerType === "mouse" && e.button !== 0) return;
-          dragging.current = true;
-          start.current = e.clientX;
-          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+          startX.current = e.clientX;
+          startY.current = e.clientY;
+          axis.current = null;
+          dragging.current = false;
         }}
         onPointerMove={(e) => {
-          if (!dragging.current) return;
-          const next = Math.max(-120, Math.min(120, e.clientX - start.current));
-          setDx(next);
+          if (startX.current === 0 && startY.current === 0) return;
+          const mx = e.clientX - startX.current;
+          const my = e.clientY - startY.current;
+          if (!axis.current) {
+            if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+            axis.current = Math.abs(mx) > Math.abs(my) ? "h" : "v";
+            if (axis.current === "h") {
+              dragging.current = true;
+              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            }
+          }
+          if (axis.current === "h") setDx(Math.max(-120, Math.min(120, mx)));
         }}
         onPointerUp={() => {
-          dragging.current = false;
-          if (dx > 72) onYes();
-          else if (dx < -72) onSkip();
-          setDx(0);
+          if (dragging.current) {
+            if (dx > 72) onYes();
+            else if (dx < -72) onSkip();
+          }
+          startX.current = 0;
+          startY.current = 0;
+          reset();
         }}
-        onPointerCancel={() => {
-          dragging.current = false;
-          setDx(0);
-        }}
+        onPointerCancel={reset}
       >
         {children}
       </div>
