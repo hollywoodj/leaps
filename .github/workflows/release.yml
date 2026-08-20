@@ -86,7 +86,20 @@ jobs:
   build:
     needs: prepare
     if: needs.prepare.outputs.skip != 'true'
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            command: npm run electron:build:mac
+            artifact: leaps-macos
+          - os: windows-latest
+            command: npm run electron:build:win
+            artifact: leaps-windows
+          - os: ubuntu-latest
+            command: npm run electron:build:linux
+            artifact: leaps-linux
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -107,14 +120,32 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Build
-        run: npm run build
+      - name: Build installer
+        run: ${{ matrix.command }}
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            release/*.dmg
+            release/*.exe
+            release/*.blockmap
+            release/*.AppImage
+            release/*.yml
+          if-no-files-found: error
 
   publish:
     needs: [prepare, build]
     if: needs.prepare.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
+      - name: Download installers
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -123,3 +154,10 @@ jobs:
           target_commitish: ${{ github.sha }}
           draft: false
           generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/**/*.dmg
+            artifacts/**/*.exe
+            artifacts/**/*.blockmap
+            artifacts/**/*.AppImage
+            artifacts/**/*.yml
