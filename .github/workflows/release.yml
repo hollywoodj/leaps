@@ -108,6 +108,20 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Install Linux packaging dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-0 \
+            libnotify4 \
+            libnss3 \
+            libxss1 \
+            libxtst6 \
+            xdg-utils \
+            libatspi2.0-0 \
+            libuuid1
+
       - name: Set release version
         run: npm version "${{ needs.prepare.outputs.version }}" --no-git-tag-version --allow-same-version
 
@@ -123,6 +137,10 @@ jobs:
       - name: Build installer
         run: ${{ matrix.command }}
 
+      - name: List installer output
+        shell: bash
+        run: ls -la release
+
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -132,7 +150,7 @@ jobs:
             release/*.exe
             release/*.blockmap
             release/*.AppImage
-            release/*.yml
+            release/latest*.yml
           if-no-files-found: error
 
   publish:
@@ -160,4 +178,4 @@ jobs:
             artifacts/**/*.exe
             artifacts/**/*.blockmap
             artifacts/**/*.AppImage
-            artifacts/**/*.yml
+            artifacts/**/latest*.yml
