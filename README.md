@@ -26,7 +26,7 @@ Or run the web UI only:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The web server binds to localhost only. On first launch the Today screen is empty; create a tracker or tap **Load sample data**.
+Open [http://localhost:3001](http://localhost:3001). The web server binds to localhost only. On first launch the Today screen is empty; create a tracker or tap **Load sample data**.
 
 ```bash
 npm run build

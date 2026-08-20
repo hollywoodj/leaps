@@ -233,7 +233,7 @@ if (!gotLock) {
     buildMenu();
     try {
       if (process.env.ELECTRON_START_URL) {
-        serverPort = Number(new URL(process.env.ELECTRON_START_URL).port || 3000);
+        serverPort = Number(new URL(process.env.ELECTRON_START_URL).port || 3001);
         await createWindow(process.env.ELECTRON_START_URL);
       } else {
         serverPort = await getFreePort();
