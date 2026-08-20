@@ -25,7 +25,7 @@ function sqliteModulePath({ isPackaged, resourcesPath, standaloneDir, projectNod
   ].join(path.delimiter);
 }
 
-function createBackendEnv({ port, dbPath, nodePath, baseEnv, packaged }) {
+function createBackendEnv({ port, dbPath, nodePath, baseEnv, packaged, startupLog }) {
   const env = sanitizeEnv({
     ...baseEnv,
     PORT: String(port),
@@ -34,6 +34,7 @@ function createBackendEnv({ port, dbPath, nodePath, baseEnv, packaged }) {
     NODE_ENV: "production",
     LEAPS_DB_PATH: dbPath,
     NODE_PATH: nodePath,
+    LEAPS_STARTUP_LOG: startupLog,
   });
   if (packaged) {
     env.ELECTRON_RUN_AS_NODE = "1";
@@ -82,7 +83,23 @@ function drainOutput(done, delayMs = 200) {
 function persistLogs(file, text) {
   const fs = require("node:fs");
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, text || "");
+  let existing = "";
+  try {
+    existing = fs.readFileSync(file, "utf8");
+  } catch {
+    existing = "";
+  }
+  const incoming = text || "";
+  if (!incoming) {
+    if (!existing) fs.writeFileSync(file, "");
+    return;
+  }
+  if (!existing) {
+    fs.writeFileSync(file, incoming);
+    return;
+  }
+  if (existing.includes(incoming.trim()) && incoming.trim()) return;
+  fs.writeFileSync(file, `${existing.trimEnd()}\n${incoming}`);
 }
 
 function waitForHealth(port, options = {}) {

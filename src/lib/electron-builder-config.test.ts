@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 
@@ -31,6 +33,29 @@ describe("electron-builder config", () => {
     const fuses = pkg.build.electronFuses as { runAsNode?: boolean };
     expect(fuses.runAsNode).toBe(true);
   });
+
+  it("copies standalone node_modules from a nested extraResources from-dir", () => {
+    expect(pkg.build.extraResources).toEqual([
+      { from: ".next/standalone", to: "standalone" },
+      { from: ".next/standalone/node_modules", to: "standalone/node_modules" },
+    ]);
+  });
+
+  it("documents that electron-builder skips a source-root node_modules folder", () => {
+    const { FileMatcher } = require("app-builder-lib/out/fileMatcher") as {
+      FileMatcher: new (from: string, to: string, macroExpander: (s: string) => string, patterns?: string[]) => {
+        createFilter: () => (file: string, stat: { isDirectory: () => boolean }) => boolean;
+      };
+    };
+    const from = join(tmpdir(), "leaps-standalone-filter");
+    const filter = new FileMatcher(from, join(tmpdir(), "out"), (s) => s, ["**/*"]).createFilter();
+    expect(filter(join(from, "node_modules"), { isDirectory: () => true })).toBe(false);
+    expect(filter(join(from, "server.js"), { isDirectory: () => false })).toBe(true);
+
+    const modulesFrom = join(from, "node_modules");
+    const nested = new FileMatcher(modulesFrom, join(tmpdir(), "out", "node_modules"), (s) => s, ["**/*"]).createFilter();
+    expect(nested(join(modulesFrom, "next"), { isDirectory: () => true })).toBe(true);
+  });
 });
 
 describe("electron main process", () => {
@@ -40,5 +65,7 @@ describe("electron main process", () => {
     expect(main).not.toContain("utilityProcess");
     expect(main).toContain("spawnStdio()");
     expect(main).toContain("startup.log");
+    expect(main).toContain("server-bootstrap.cjs");
+    expect(main).toContain("startupLog");
   });
 });

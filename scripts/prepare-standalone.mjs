@@ -1,9 +1,11 @@
 import { cpSync, existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const { removeSqlitePackages } = require("./copy-native-modules.cjs");
+const { removeSqlitePackages, rewriteStandaloneServerFile } = require("./copy-native-modules.cjs");
+const electronDir = join(dirname(fileURLToPath(import.meta.url)), "..", "electron");
 
 const root = process.cwd();
 const standalone = join(root, ".next", "standalone");
@@ -28,5 +30,11 @@ const removed = removeSqlitePackages(standalone);
 if (removed.length) {
   console.log(`Removed ${removed.length} Node-ABI sqlite package(s) from standalone.`);
 }
+
+if (rewriteStandaloneServerFile(standalone)) {
+  console.log("Rewrote standalone server.js tracing roots to the packaged directory.");
+}
+
+cpSync(join(electronDir, "server-bootstrap.cjs"), join(standalone, "server-bootstrap.cjs"));
 
 console.log("Standalone app is ready for Electron.");

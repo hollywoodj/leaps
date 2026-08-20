@@ -1,4 +1,6 @@
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
@@ -12,7 +14,9 @@ const utils = require("../../electron/backend-utils.cjs") as {
     nodePath: string;
     baseEnv: Record<string, string | undefined>;
     packaged: boolean;
+    startupLog?: string;
   }) => Record<string, string>;
+  persistLogs: (file: string, text: string) => void;
   createLogBuffer: () => { chunks: string[] };
   formatBackendError: (input: { code?: number | null; logs?: string; serverJs: string; cause?: string; logFile?: string }) => string;
   logsText: (buffer: { chunks: string[] }) => string;
@@ -46,6 +50,7 @@ describe("backend env", () => {
       nodePath: "C:\\app\\resources\\standalone\\node_modules",
       baseEnv: { PATH: "C:\\Windows", HOSTNAME: "DESKTOP-BOX", ELECTRON_RUN_AS_NODE: undefined },
       packaged: true,
+      startupLog: "C:\\Users\\dev\\AppData\\Roaming\\Leaps\\data\\startup.log",
     });
     expect(env.PORT).toBe("4123");
     expect(env.HOST).toBe("127.0.0.1");
@@ -54,6 +59,7 @@ describe("backend env", () => {
     expect(env.ELECTRON_NO_ASAR).toBe("1");
     expect(env.LEAPS_DB_PATH).toContain("leaps.db");
     expect(env.NODE_ENV).toBe("production");
+    expect(env.LEAPS_STARTUP_LOG).toContain("startup.log");
   });
 
   it("does not set ELECTRON_RUN_AS_NODE when unpackaged", () => {
@@ -145,5 +151,21 @@ describe("waitForHealth", () => {
         isAborted: () => true,
       }),
     ).rejects.toThrow("Server did not start");
+  });
+});
+
+describe("persistLogs", () => {
+  it("keeps bootstrap file output when pipe capture is empty", () => {
+    const dir = mkdtempSync(join(tmpdir(), "leaps-logs-"));
+    const file = join(dir, "startup.log");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(file, "cwd=C:\\\\app\\\\resources\\\\standalone\nCannot find module 'next'\n");
+    utils.persistLogs(file, "");
+    expect(readFileSync(file, "utf8")).toContain("Cannot find module 'next'");
+    utils.persistLogs(file, "The Leaps server exited with code 1 before it was ready.\n");
+    const text = readFileSync(file, "utf8");
+    expect(text).toContain("Cannot find module 'next'");
+    expect(text).toContain("exited with code 1");
+    rmSync(dir, { recursive: true, force: true });
   });
 });

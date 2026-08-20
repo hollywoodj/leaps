@@ -7,14 +7,18 @@ import { afterEach, describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const {
   copyNativeModules,
+  ensureStandaloneNodeModules,
   packagedResourcesDir,
   removeSqlitePackages,
   replaceSqliteAddons,
+  rewriteStandaloneServerConfig,
 } = require("../../scripts/copy-native-modules.cjs") as {
   copyNativeModules: (fromDir: string, toDir: string) => string[];
+  ensureStandaloneNodeModules: (projectDir: string, standalone: string) => boolean;
   packagedResourcesDir: (appOutDir: string, electronPlatformName: string, productName?: string) => string;
   removeSqlitePackages: (root: string) => string[];
   replaceSqliteAddons: (root: string, rebuiltAddon: string) => string[];
+  rewriteStandaloneServerConfig: (source: string) => string;
 };
 
 const temps: string[] = [];
@@ -93,5 +97,30 @@ describe("packagedResourcesDir", () => {
       join("release", "mac-arm64", "Leaps.app", "Contents", "Resources"),
     );
     expect(packagedResourcesDir(join("release", "mac"), "darwin")).not.toBe(join("release", "Resources"));
+  });
+});
+
+describe("standalone node_modules packaging", () => {
+  it("restores Next.js modules when electron-builder skipped the top-level folder", () => {
+    const projectDir = tempDir();
+    const standalone = tempDir();
+    const srcNext = join(projectDir, ".next", "standalone", "node_modules", "next");
+    mkdirSync(srcNext, { recursive: true });
+    writeFileSync(join(srcNext, "package.json"), JSON.stringify({ name: "next" }));
+    mkdirSync(join(standalone, "node_modules", "better-sqlite3"), { recursive: true });
+    expect(ensureStandaloneNodeModules(projectDir, standalone)).toBe(true);
+    expect(JSON.parse(readFileSync(join(standalone, "node_modules", "next", "package.json"), "utf8")).name).toBe("next");
+    expect(ensureStandaloneNodeModules(projectDir, standalone)).toBe(false);
+  });
+
+  it("rewrites baked CI tracing roots to the packaged standalone directory", () => {
+    const source = `const dir = path.join(__dirname)
+const nextConfig = {"outputFileTracingRoot":"D:\\\\a\\\\leaps\\\\leaps","turbopack":{"root":"D:\\\\a\\\\leaps\\\\leaps"}}
+process.env.__NEXT_PRIVATE_STANDALONE_CONFIG = JSON.stringify(nextConfig)
+`;
+    const rewritten = rewriteStandaloneServerConfig(source);
+    expect(rewritten).toContain("nextConfig.outputFileTracingRoot = dir");
+    expect(rewritten).toContain("nextConfig.turbopack.root = dir");
+    expect(rewriteStandaloneServerConfig(rewritten)).toBe(rewritten);
   });
 });
