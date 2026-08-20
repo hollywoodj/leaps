@@ -1,8 +1,8 @@
 # Leaps
 
-A web clone of [Strides](https://www.stridesapp.com/) — habits, numeric targets, averages, and projects in one daily list.
+A desktop and web clone of [Strides](https://www.stridesapp.com/) — habits, numeric targets, averages, and projects in one daily list.
 
-The UI is a browser app. **Data is not stored in the browser.** Trackers, logs, tags, and milestones live in a local SQLite file on the machine that runs the server (`data/leaps.db`).
+**Data is not stored in the browser.** Trackers, logs, tags, and milestones live in a local SQLite file. In the Electron app that file is in the app data folder (Help → Show Data Folder). In the web server it is `data/leaps.db`.
 
 ## Features
 
@@ -17,6 +17,12 @@ The UI is a browser app. **Data is not stored in the browser.** Trackers, logs, 
 ```bash
 npm install
 npm test
+npm run electron:dev
+```
+
+Or run the web UI only:
+
+```bash
 npm run dev
 ```
 
@@ -27,4 +33,12 @@ npm run build
 npm start
 ```
 
-Optional: `LEAPS_DB_PATH=/absolute/path/to/leaps.db` to put the database somewhere else.
+Packaged installers (macOS dmg, Windows nsis, Linux AppImage):
+
+```bash
+npm run electron:build:mac
+npm run electron:build:win
+npm run electron:build:linux
+```
+
+Optional: `LEAPS_DB_PATH=/absolute/path/to/leaps.db` to put the database somewhere else when running the web server.

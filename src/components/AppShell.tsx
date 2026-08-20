@@ -1,5 +1,6 @@
 "use client";
 
+import { ElectronMenu } from "@/components/ElectronMenu";
 import clsx from "clsx";
 import { BarChart3, ListTodo, Plus } from "lucide-react";
 import Link from "next/link";
@@ -11,6 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="ios-app">
+      <ElectronMenu />
       <div className="ios-screen relative">
         <div className={clsx(!hideTab && "app-pad")}>{children}</div>
         {!hideTab && <TabBar pathname={pathname} />}

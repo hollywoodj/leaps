@@ -11,6 +11,7 @@ export function SettingsView() {
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [name, setName] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [inElectron, setInElectron] = useState(false);
 
   async function load() {
     const [tagPayload, trackerPayload] = await Promise.all([
@@ -23,6 +24,7 @@ export function SettingsView() {
 
   useEffect(() => {
     void load();
+    setInElectron(Boolean(window.leaps));
   }, []);
 
   return (
@@ -37,7 +39,8 @@ export function SettingsView() {
       />
 
       <p className="px-4 py-3 text-[13px] text-muted">
-        Trackers, logs, tags, and milestones are stored in a SQLite file on this machine. The browser is only the UI.
+        Trackers, logs, tags, and milestones are stored in a SQLite file on this machine
+        {inElectron ? " (Help → Show Data Folder)." : ". The browser is only the UI."}
       </p>
 
       <h2 className="px-4 pb-1 pt-4 text-[13px] font-semibold uppercase tracking-wide text-muted">Tags</h2>
