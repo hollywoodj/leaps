@@ -12,7 +12,7 @@ const {
   replaceSqliteAddons,
 } = require("../../scripts/copy-native-modules.cjs") as {
   copyNativeModules: (fromDir: string, toDir: string) => string[];
-  packagedResourcesDir: (appOutDir: string, electronPlatformName: string) => string;
+  packagedResourcesDir: (appOutDir: string, electronPlatformName: string, productName?: string) => string;
   removeSqlitePackages: (root: string) => string[];
   replaceSqliteAddons: (root: string, rebuiltAddon: string) => string[];
 };
@@ -86,5 +86,12 @@ describe("packagedResourcesDir", () => {
     expect(packagedResourcesDir(macApp, "darwin")).toBe(join("dist", "mac", "Leaps.app", "Contents", "Resources"));
     expect(packagedResourcesDir(winApp, "win32")).toBe(join("dist", "win-unpacked", "resources"));
     expect(packagedResourcesDir(linuxApp, "linux")).toBe(join("dist", "linux-unpacked", "resources"));
+  });
+
+  it("resolves electron-builder's mac output folder that contains the .app", () => {
+    expect(packagedResourcesDir(join("release", "mac-arm64"), "darwin", "Leaps")).toBe(
+      join("release", "mac-arm64", "Leaps.app", "Contents", "Resources"),
+    );
+    expect(packagedResourcesDir(join("release", "mac"), "darwin")).not.toBe(join("release", "Resources"));
   });
 });

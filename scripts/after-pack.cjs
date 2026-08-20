@@ -8,11 +8,12 @@ const {
 } = require("./copy-native-modules.cjs");
 
 async function afterPack(context) {
-  const resources = packagedResourcesDir(context.appOutDir, context.electronPlatformName);
+  const productName = context.packager.appInfo?.productFilename || context.packager.appInfo?.productName || "Leaps";
+  const resources = packagedResourcesDir(context.appOutDir, context.electronPlatformName, productName);
   const standalone = path.join(resources, "standalone");
   const serverJs = path.join(standalone, "server.js");
   if (!existsSync(serverJs)) {
-    throw new Error(`afterPack: Next.js standalone server missing at ${serverJs}`);
+    throw new Error(`afterPack: Next.js standalone server missing at ${serverJs} (appOutDir=${context.appOutDir})`);
   }
 
   const projectDir = context.packager.projectDir || process.cwd();
