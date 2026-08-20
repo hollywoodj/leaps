@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 
+/** Version 1 base schema. Later versions live in MIGRATIONS. */
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
@@ -69,10 +70,65 @@ CREATE TABLE IF NOT EXISTS milestones (
 );
 `;
 
+type Migration = {
+  version: number;
+  up: (db: Database.Database) => void;
+};
+
+const MIGRATIONS: Migration[] = [
+  {
+    version: 2,
+    up(db) {
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_logs_date ON logs(date);
+        CREATE INDEX IF NOT EXISTS idx_tracker_tags_tag ON tracker_tags(tag_id);
+        CREATE INDEX IF NOT EXISTS idx_milestones_tracker ON milestones(tracker_id);
+      `);
+    },
+  },
+];
+
+export const SCHEMA_VERSION = MIGRATIONS.at(-1)?.version ?? 1;
+
 let db: Database.Database | null = null;
 
 export function getDbPath(): string {
   return process.env.LEAPS_DB_PATH || path.join(process.cwd(), "data", "leaps.db");
+}
+
+export function readSchemaVersion(instance: Database.Database): number {
+  try {
+    const row = instance.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get() as
+      | { value: string }
+      | undefined;
+    const n = row ? Number(row.value) : 0;
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeSchemaVersion(instance: Database.Database, version: number): void {
+  instance.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_version', ?)").run(String(version));
+}
+
+/** Apply pending migrations. Safe to call on every open. */
+export function migrateDatabase(instance: Database.Database): number {
+  instance.exec(SCHEMA);
+  let version = readSchemaVersion(instance);
+  if (version < 1) {
+    writeSchemaVersion(instance, 1);
+    version = 1;
+  }
+  for (const migration of MIGRATIONS) {
+    if (migration.version <= version) continue;
+    instance.transaction(() => {
+      migration.up(instance);
+      writeSchemaVersion(instance, migration.version);
+    })();
+    version = migration.version;
+  }
+  return version;
 }
 
 export function openDatabase(dbPath = getDbPath()): Database.Database {
@@ -82,8 +138,7 @@ export function openDatabase(dbPath = getDbPath()): Database.Database {
   const instance = new Database(dbPath);
   instance.pragma("journal_mode = WAL");
   instance.pragma("foreign_keys = ON");
-  instance.exec(SCHEMA);
-  instance.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '1')").run();
+  migrateDatabase(instance);
   return instance;
 }
 

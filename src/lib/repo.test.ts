@@ -3,8 +3,10 @@ import { closeDb, openDatabase, setDb } from "./db";
 import {
   applyLog,
   createTracker,
+  exportData,
   getReports,
   getToday,
+  importData,
   seedSampleData,
   toggleMilestone,
 } from "./repo";
@@ -78,5 +80,28 @@ describe("repo", () => {
     const reports = getReports("2026-08-17", "month");
     expect(reports.trackerCount).toBeGreaterThan(3);
     expect(reports.trends.length).toBeGreaterThan(0);
+  });
+
+  it("round-trips export and import", () => {
+    seedSampleData("2026-08-17");
+    const snapshot = exportData();
+    expect(snapshot.trackers.length).toBeGreaterThan(0);
+
+    createTracker({ title: "Extra", type: "habit", startDate: "2026-08-17" });
+    const result = importData(snapshot, { replace: true });
+    expect(result.trackers).toBe(snapshot.trackers.length);
+    expect(result.logs).toBeGreaterThan(0);
+    expect(exportData().trackers.some((tracker) => tracker.title === "Extra")).toBe(false);
+    expect(exportData().trackers.map((tracker) => tracker.id).sort()).toEqual(snapshot.trackers.map((tracker) => tracker.id).sort());
+
+    expect(() => importData({ exportedAt: snapshot.exportedAt, trackers: [], tags: [] })).toThrow(/no trackers or tags/);
+  });
+
+  it("merges an export without deleting other trackers", () => {
+    createTracker({ title: "Alpha", type: "habit", startDate: "2026-08-17" });
+    const snapshot = exportData();
+    createTracker({ title: "Beta", type: "habit", startDate: "2026-08-17" });
+    importData(snapshot, { replace: false });
+    expect(exportData().trackers.map((tracker) => tracker.title).sort()).toEqual(["Alpha", "Beta"]);
   });
 });

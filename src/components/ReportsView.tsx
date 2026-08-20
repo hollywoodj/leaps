@@ -5,7 +5,7 @@ import { CalendarHeatmap } from "@/components/CalendarHeatmap";
 import { HeaderButton, NavHeader } from "@/components/NavHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { api } from "@/lib/client";
-import { formatPretty, formatShort, todayISO } from "@/lib/dates";
+import { addDays, addMonths, formatPretty, formatShort, todayISO } from "@/lib/dates";
 import { frequencyLabel, reportMetrics } from "@/lib/labels";
 import { formatNumber } from "@/lib/stats";
 import type { ReportsPayload, Tag } from "@/lib/types";
@@ -19,6 +19,7 @@ const PERIODS = ["week", "month", "year", "all"] as const;
 
 export function ReportsView() {
   const [period, setPeriod] = useState<(typeof PERIODS)[number]>("month");
+  const [asOf, setAsOf] = useState(() => todayISO());
   const [tagId, setTagId] = useState("");
   const [tags, setTags] = useState<Tag[]>([]);
   const [data, setData] = useState<ReportsPayload | null>(null);
@@ -26,10 +27,12 @@ export function ReportsView() {
   const [error, setError] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
 
+  const today = todayISO();
+
   const load = useCallback(async () => {
     setError(null);
     try {
-      const query = new URLSearchParams({ period, date: todayISO() });
+      const query = new URLSearchParams({ period, date: asOf });
       if (tagId) query.set("tagId", tagId);
       const [reports, tagPayload] = await Promise.all([
         api<ReportsPayload>(`/api/reports?${query}`),
@@ -40,7 +43,7 @@ export function ReportsView() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load reports");
     }
-  }, [period, tagId]);
+  }, [period, tagId, asOf]);
 
   useEffect(() => {
     void load();
@@ -106,7 +109,10 @@ export function ReportsView() {
             <button
               key={p}
               type="button"
-              onClick={() => setPeriod(p)}
+              onClick={() => {
+                setPeriod(p);
+                setAsOf(todayISO());
+              }}
               className={clsx(
                 "rounded-full px-3 py-1 text-[12px] font-semibold capitalize",
                 period === p ? "bg-ios text-white" : "bg-grouped text-label",
@@ -130,14 +136,43 @@ export function ReportsView() {
       )}
 
       <div className="flex items-center justify-between bg-[#ececf1] px-4 py-2 text-[13px] font-medium text-label">
-        <ChevronLeft size={16} className="text-muted" />
+        <button
+          type="button"
+          className="rounded-full p-1 text-navy disabled:text-muted disabled:opacity-40"
+          aria-label="Previous period"
+          disabled={period === "all"}
+          onClick={() => {
+            if (period === "week") setAsOf((d) => addDays(d, -7));
+            else if (period === "month") setAsOf((d) => addMonths(d, -1));
+            else if (period === "year") setAsOf((d) => addMonths(d, -12));
+          }}
+        >
+          <ChevronLeft size={16} />
+        </button>
         <span>
-          {period === "month" ? "Month" : period === "week" ? "Week" : period === "year" ? "Year" : "All"}:{" "}
-          {period === "month" || period === "week" || period === "year"
-            ? formatPretty(data?.to ?? todayISO(), { month: "long", year: "numeric" })
-            : "All time"}
+          {period === "all"
+            ? "All time"
+            : period === "week"
+              ? `${formatShort(data?.from ?? addDays(asOf, -6))} – ${formatShort(data?.to ?? asOf)}`
+              : period === "year"
+                ? formatPretty(data?.to ?? asOf, { year: "numeric" })
+                : formatPretty(data?.to ?? asOf, { month: "long", year: "numeric" })}
         </span>
-        <ChevronRight size={16} className="text-muted" />
+        <button
+          type="button"
+          className="rounded-full p-1 text-navy disabled:text-muted disabled:opacity-40"
+          aria-label="Next period"
+          disabled={period === "all" || asOf >= today}
+          onClick={() => {
+            const next =
+              period === "week" ? addDays(asOf, 7)
+                : period === "month" ? addMonths(asOf, 1)
+                  : addMonths(asOf, 12);
+            setAsOf(next > today ? today : next);
+          }}
+        >
+          <ChevronRight size={16} />
+        </button>
       </div>
 
       {error && <p className="px-4 py-3 text-sm text-bad">{error}</p>}
