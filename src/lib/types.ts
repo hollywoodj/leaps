@@ -125,6 +125,18 @@ export interface ReportsPayload {
   calendar: { date: string; percent: number; due: number; done: number }[];
 }
 
+export interface ExportedTracker extends Tracker {
+  tags: Tag[];
+  logs: LogEntry[];
+  milestones: Milestone[];
+}
+
+export interface ExportPayload {
+  exportedAt: string;
+  trackers: ExportedTracker[];
+  tags: Tag[];
+}
+
 export interface Template {
   id: string;
   category: string;

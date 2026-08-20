@@ -146,6 +146,35 @@ export function SettingsView() {
         >
           Export JSON
         </button>
+        <label className="block w-full cursor-pointer px-4 py-3 text-left text-[16px] text-navy">
+          Import JSON
+          <input
+            type="file"
+            accept="application/json,.json"
+            className="sr-only"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              try {
+                const parsed = JSON.parse(await file.text()) as unknown;
+                const proceed = window.confirm("Import this backup into Leaps?");
+                if (!proceed) return;
+                const replace = window.confirm(
+                  "Replace all current data with this file?\n\nOK = replace everything. Cancel = merge (same ids are overwritten).",
+                );
+                const result = await api<{ trackers: number; logs: number; tags: number }>("/api/data", {
+                  method: "PUT",
+                  body: JSON.stringify({ data: parsed, replace }),
+                });
+                setMessage(`Imported ${result.trackers} trackers, ${result.logs} logs, ${result.tags} tags.`);
+                await load();
+              } catch (err) {
+                setMessage(err instanceof Error ? err.message : "Could not import file");
+              }
+            }}
+          />
+        </label>
       </div>
       {message && <p className="px-4 py-3 text-sm text-muted">{message}</p>}
       <p className="px-4 pt-6 text-center text-[12px] text-muted">Leaps — a web clone of Strides. Keep making strides.</p>

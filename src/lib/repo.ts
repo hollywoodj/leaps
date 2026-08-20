@@ -12,6 +12,8 @@ import {
 } from "./stats";
 import { TEMPLATES } from "./templates";
 import type {
+  ExportPayload,
+  ExportedTracker,
   LogEntry,
   LogStatus,
   Milestone,
@@ -164,6 +166,68 @@ export function logsForTracker(trackerId: string, from?: string, to?: string): L
 
 export function milestonesForTracker(trackerId: string): Milestone[] {
   return (getDb().prepare("SELECT * FROM milestones WHERE tracker_id = ? ORDER BY sort_order ASC").all(trackerId) as MilestoneRow[]).map(mapMilestone);
+}
+
+const SQLITE_CHUNK = 400;
+
+function chunkIds(ids: string[]): string[][] {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += SQLITE_CHUNK) chunks.push(ids.slice(i, i + SQLITE_CHUNK));
+  return chunks;
+}
+
+function emptyLists<T>(ids: string[]): Map<string, T[]> {
+  return new Map(ids.map((id) => [id, [] as T[]]));
+}
+
+function logsByTrackerIds(ids: string[]): Map<string, LogEntry[]> {
+  const map = emptyLists<LogEntry>(ids);
+  if (!ids.length) return map;
+  const db = getDb();
+  for (const chunk of chunkIds(ids)) {
+    const placeholders = chunk.map(() => "?").join(",");
+    const rows = db
+      .prepare(`SELECT * FROM logs WHERE tracker_id IN (${placeholders}) ORDER BY date ASC, created_at ASC`)
+      .all(...chunk) as LogRow[];
+    for (const row of rows) map.get(row.tracker_id)?.push(mapLog(row));
+  }
+  return map;
+}
+
+function tagsByTrackerIds(ids: string[]): Map<string, Tag[]> {
+  const map = emptyLists<Tag>(ids);
+  if (!ids.length) return map;
+  const db = getDb();
+  for (const chunk of chunkIds(ids)) {
+    const placeholders = chunk.map(() => "?").join(",");
+    const rows = db
+      .prepare(
+        `SELECT tt.tracker_id AS tracker_id, t.id, t.name, t.color
+         FROM tags t
+         JOIN tracker_tags tt ON tt.tag_id = t.id
+         WHERE tt.tracker_id IN (${placeholders})
+         ORDER BY t.name COLLATE NOCASE`,
+      )
+      .all(...chunk) as (TagRow & { tracker_id: string })[];
+    for (const row of rows) {
+      map.get(row.tracker_id)?.push({ id: row.id, name: row.name, color: row.color });
+    }
+  }
+  return map;
+}
+
+function milestonesByTrackerIds(ids: string[]): Map<string, Milestone[]> {
+  const map = emptyLists<Milestone>(ids);
+  if (!ids.length) return map;
+  const db = getDb();
+  for (const chunk of chunkIds(ids)) {
+    const placeholders = chunk.map(() => "?").join(",");
+    const rows = db
+      .prepare(`SELECT * FROM milestones WHERE tracker_id IN (${placeholders}) ORDER BY sort_order ASC`)
+      .all(...chunk) as MilestoneRow[];
+    for (const row of rows) map.get(row.tracker_id)?.push(mapMilestone(row));
+  }
+  return map;
 }
 
 function maxSortOrder(): number {
@@ -453,22 +517,28 @@ export function toggleMilestone(id: string, date: string): Milestone {
 
 export function getToday(date: string): { date: string; due: TodayItem[]; done: TodayItem[]; missed: TodayItem[]; perfect: boolean } {
   const trackers = listTrackers(false);
+  const ids = trackers.map((tracker) => tracker.id);
+  const logsById = logsByTrackerIds(ids);
+  const tagsById = tagsByTrackerIds(ids);
+  const projectIds = trackers.filter((tracker) => tracker.type === "project").map((tracker) => tracker.id);
+  const milestonesById = milestonesByTrackerIds(projectIds);
   const due: TodayItem[] = [];
   const done: TodayItem[] = [];
   const missed: TodayItem[] = [];
 
   for (const tracker of trackers) {
-    const logs = logsForTracker(tracker.id);
-    const milestones = tracker.type === "project" ? milestonesForTracker(tracker.id) : [];
+    const logs = logsById.get(tracker.id) ?? [];
+    const milestones = tracker.type === "project" ? (milestonesById.get(tracker.id) ?? []) : [];
     const section = classifyToday(tracker, logs, date, milestones);
     if (section === "hidden") continue;
+    const todayLogs = logsOnDate(logs, date);
     const item: TodayItem = {
       tracker,
-      tags: tagsForTracker(tracker.id),
+      tags: tagsById.get(tracker.id) ?? [],
       section,
       progress: progressSnapshot(tracker, logs, date, milestones),
-      todayLogs: logsOnDate(logs, date),
-      todayValue: sumValues(logsOnDate(logs, date)),
+      todayLogs,
+      todayValue: sumValues(todayLogs),
       milestones,
     };
     if (section === "due") due.push(item);
@@ -512,19 +582,25 @@ export function getTrackerDetail(id: string, asOf = todayISO()): TrackerDetail {
 
 export function getReports(asOf: string, period: "week" | "month" | "year" | "all", tagId?: string | null): ReportsPayload {
   const all = listTrackers(false);
+  const ids = all.map((tracker) => tracker.id);
+  const tagsById = tagsByTrackerIds(ids);
   const tagged = tagId
-    ? all.filter((tracker) => tagsForTracker(tracker.id).some((tag) => tag.id === tagId))
+    ? all.filter((tracker) => (tagsById.get(tracker.id) ?? []).some((tag) => tag.id === tagId))
     : all;
   const oldest = tagged.reduce((min, t) => (t.startDate < min ? t.startDate : min), asOf);
   const from = period === "week" ? addDays(asOf, -6)
     : period === "month" ? addDays(asOf, -29)
     : period === "year" ? addDays(asOf, -364)
     : oldest;
+  const taggedIds = tagged.map((tracker) => tracker.id);
+  const logsById = logsByTrackerIds(taggedIds);
+  const projectIds = tagged.filter((tracker) => tracker.type === "project").map((tracker) => tracker.id);
+  const milestonesById = milestonesByTrackerIds(projectIds);
   const cache = tagged.map((tracker) => ({
     tracker,
-    tags: tagsForTracker(tracker.id),
-    logs: logsForTracker(tracker.id),
-    milestones: tracker.type === "project" ? milestonesForTracker(tracker.id) : [],
+    tags: tagsById.get(tracker.id) ?? [],
+    logs: logsById.get(tracker.id) ?? [],
+    milestones: tracker.type === "project" ? (milestonesById.get(tracker.id) ?? []) : [],
   }));
   const trackers = cache.map(({ tracker, tags, logs, milestones }) => {
     const days = scheduledDays(tracker, from, asOf);
@@ -580,16 +656,253 @@ export function getReports(asOf: string, period: "week" | "month" | "year" | "al
   };
 }
 
-export function exportData() {
+export function exportData(): ExportPayload {
+  const trackers = listTrackers(true);
+  const ids = trackers.map((tracker) => tracker.id);
+  const tagsById = tagsByTrackerIds(ids);
+  const logsById = logsByTrackerIds(ids);
+  const milestonesById = milestonesByTrackerIds(ids);
   return {
     exportedAt: nowIso(),
-    trackers: listTrackers(true).map((tracker) => ({
+    trackers: trackers.map((tracker) => ({
       ...tracker,
-      tags: tagsForTracker(tracker.id),
-      logs: logsForTracker(tracker.id),
-      milestones: milestonesForTracker(tracker.id),
+      tags: tagsById.get(tracker.id) ?? [],
+      logs: logsById.get(tracker.id) ?? [],
+      milestones: milestonesById.get(tracker.id) ?? [],
     })),
     tags: listTags(),
+  };
+}
+
+const LOG_STATUSES = new Set<LogStatus>(["yes", "no", "skip", "value"]);
+const TRACKER_TYPES = new Set<TrackerType>(["habit", "target", "average", "project"]);
+const REPEAT_KINDS = new Set<RepeatKind>(["daily", "weekly", "monthly"]);
+
+function asRecord(value: unknown, label: string): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`Invalid export: ${label}`);
+  return value as Record<string, unknown>;
+}
+
+function asString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function asNumber(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function asBool(value: unknown): boolean {
+  return Boolean(value);
+}
+
+function parseExportPayload(raw: unknown): ExportPayload {
+  const data = asRecord(raw, "root");
+  const tagsRaw = Array.isArray(data.tags) ? data.tags : [];
+  const trackersRaw = Array.isArray(data.trackers) ? data.trackers : [];
+  if (!trackersRaw.length && !tagsRaw.length) throw new Error("Export file has no trackers or tags");
+
+  const tags: Tag[] = tagsRaw.map((item, index) => {
+    const row = asRecord(item, `tags[${index}]`);
+    const id = asString(row.id);
+    const name = asString(row.name).trim();
+    if (!id || !name) throw new Error(`Invalid tag at index ${index}`);
+    return { id, name, color: asString(row.color, "#0A84FF") };
+  });
+
+  const trackers: ExportedTracker[] = trackersRaw.map((item, index) => {
+    const row = asRecord(item, `trackers[${index}]`);
+    const id = asString(row.id);
+    const title = asString(row.title).trim();
+    const type = asString(row.type) as TrackerType;
+    const repeatKind = (asString(row.repeatKind, "daily") || "daily") as RepeatKind;
+    if (!id || !title) throw new Error(`Invalid tracker at index ${index}`);
+    if (!TRACKER_TYPES.has(type)) throw new Error(`Unknown tracker type: ${type || "(empty)"}`);
+    if (!REPEAT_KINDS.has(repeatKind)) throw new Error(`Unknown repeat kind: ${repeatKind}`);
+    const startDate = asString(row.startDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) throw new Error(`Tracker ${title} is missing startDate`);
+    const logsRaw = Array.isArray(row.logs) ? row.logs : [];
+    const milestonesRaw = Array.isArray(row.milestones) ? row.milestones : [];
+    const tagList = Array.isArray(row.tags) ? row.tags : [];
+    const weekdays = Array.isArray(row.weekdays)
+      ? row.weekdays.filter((n): n is number => typeof n === "number")
+      : null;
+    return {
+      id,
+      title,
+      emoji: asString(row.emoji, "🎯"),
+      type,
+      color: asString(row.color, "#0A84FF"),
+      unit: asString(row.unit),
+      goalValue: asNumber(row.goalValue, 1),
+      isBad: asBool(row.isBad),
+      startDate,
+      endDate: typeof row.endDate === "string" ? row.endDate : null,
+      repeatKind,
+      repeatInterval: asNumber(row.repeatInterval, 1) || 1,
+      weekdays,
+      timesPerPeriod: asNumber(row.timesPerPeriod, 1) || 1,
+      sortOrder: asNumber(row.sortOrder, index),
+      archived: asBool(row.archived),
+      notes: asString(row.notes),
+      createdAt: asString(row.createdAt, nowIso()),
+      updatedAt: asString(row.updatedAt, nowIso()),
+      tags: tagList.map((tag, tagIndex) => {
+        const t = asRecord(tag, `trackers[${index}].tags[${tagIndex}]`);
+        return { id: asString(t.id), name: asString(t.name), color: asString(t.color, "#0A84FF") };
+      }).filter((tag) => tag.id && tag.name),
+      logs: logsRaw.map((log, logIndex) => {
+        const l = asRecord(log, `trackers[${index}].logs[${logIndex}]`);
+        const status = asString(l.status) as LogStatus;
+        if (!LOG_STATUSES.has(status)) throw new Error(`Invalid log status on ${title}`);
+        const date = asString(l.date);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`Invalid log date on ${title}`);
+        return {
+          id: asString(l.id) || `${id}:${date}:${logIndex}`,
+          trackerId: id,
+          date,
+          value: asNumber(l.value, 1),
+          status,
+          note: typeof l.note === "string" ? l.note : null,
+          createdAt: asString(l.createdAt, nowIso()),
+        };
+      }),
+      milestones: milestonesRaw.map((milestone, mIndex) => {
+        const m = asRecord(milestone, `trackers[${index}].milestones[${mIndex}]`);
+        return {
+          id: asString(m.id) || `${id}:ms:${mIndex}`,
+          trackerId: id,
+          title: asString(m.title, "Milestone"),
+          sortOrder: asNumber(m.sortOrder, mIndex),
+          completed: asBool(m.completed),
+          completedAt: typeof m.completedAt === "string" ? m.completedAt : null,
+          dueDate: typeof m.dueDate === "string" ? m.dueDate : null,
+        };
+      }),
+    };
+  });
+
+  return {
+    exportedAt: asString(data.exportedAt, nowIso()),
+    trackers,
+    tags,
+  };
+}
+
+export function importData(raw: unknown, options: { replace?: boolean } = {}): { trackers: number; logs: number; tags: number } {
+  const payload = parseExportPayload(raw);
+  const db = getDb();
+  const run = db.transaction(() => {
+    if (options.replace) {
+      db.exec("DELETE FROM logs; DELETE FROM milestones; DELETE FROM tracker_tags; DELETE FROM trackers; DELETE FROM tags;");
+    }
+
+    const insertTag = db.prepare(
+      `INSERT INTO tags (id, name, color) VALUES (?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET name = excluded.name, color = excluded.color`,
+    );
+    const tagByName = new Map(
+      (db.prepare("SELECT * FROM tags").all() as TagRow[]).map((row) => [row.name.toLowerCase(), row]),
+    );
+    const tagIdMap = new Map<string, string>();
+
+    const upsertTag = (tag: Tag) => {
+      if (tagIdMap.has(tag.id)) return;
+      const existingById = db.prepare("SELECT * FROM tags WHERE id = ?").get(tag.id) as TagRow | undefined;
+      if (existingById) {
+        db.prepare("UPDATE tags SET name = ?, color = ? WHERE id = ?").run(tag.name, tag.color, tag.id);
+        tagIdMap.set(tag.id, tag.id);
+        tagByName.set(tag.name.toLowerCase(), { ...existingById, name: tag.name, color: tag.color });
+        return;
+      }
+      const existingByName = tagByName.get(tag.name.toLowerCase());
+      if (existingByName) {
+        tagIdMap.set(tag.id, existingByName.id);
+        return;
+      }
+      insertTag.run(tag.id, tag.name, tag.color);
+      tagIdMap.set(tag.id, tag.id);
+      tagByName.set(tag.name.toLowerCase(), { id: tag.id, name: tag.name, color: tag.color });
+    };
+
+    for (const tag of payload.tags) upsertTag(tag);
+    for (const tracker of payload.trackers) {
+      for (const tag of tracker.tags) upsertTag(tag);
+    }
+
+    const insertTracker = db.prepare(
+      `INSERT INTO trackers (
+        id, title, emoji, type, color, unit, goal_value, is_bad, start_date, end_date,
+        repeat_kind, repeat_interval, weekdays, times_per_period, sort_order, archived, notes, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+        title=excluded.title, emoji=excluded.emoji, type=excluded.type, color=excluded.color, unit=excluded.unit,
+        goal_value=excluded.goal_value, is_bad=excluded.is_bad, start_date=excluded.start_date, end_date=excluded.end_date,
+        repeat_kind=excluded.repeat_kind, repeat_interval=excluded.repeat_interval, weekdays=excluded.weekdays,
+        times_per_period=excluded.times_per_period, sort_order=excluded.sort_order, archived=excluded.archived,
+        notes=excluded.notes, updated_at=excluded.updated_at`,
+    );
+    const insertLog = db.prepare(
+      `INSERT INTO logs (id, tracker_id, date, value, status, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+        tracker_id=excluded.tracker_id, date=excluded.date, value=excluded.value, status=excluded.status, note=excluded.note`,
+    );
+    const insertMilestone = db.prepare(
+      `INSERT INTO milestones (id, tracker_id, title, sort_order, completed, completed_at, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+        tracker_id=excluded.tracker_id, title=excluded.title, sort_order=excluded.sort_order,
+        completed=excluded.completed, completed_at=excluded.completed_at, due_date=excluded.due_date`,
+    );
+    const insertTrackerTag = db.prepare("INSERT OR IGNORE INTO tracker_tags (tracker_id, tag_id) VALUES (?, ?)");
+    const deleteTrackerTags = db.prepare("DELETE FROM tracker_tags WHERE tracker_id = ?");
+
+    for (const tracker of payload.trackers) {
+      insertTracker.run(
+        tracker.id,
+        tracker.title,
+        tracker.emoji,
+        tracker.type,
+        tracker.color,
+        tracker.unit,
+        tracker.goalValue,
+        tracker.isBad ? 1 : 0,
+        tracker.startDate,
+        tracker.endDate,
+        tracker.repeatKind,
+        tracker.repeatInterval,
+        tracker.weekdays ? JSON.stringify(tracker.weekdays) : null,
+        tracker.timesPerPeriod,
+        tracker.sortOrder,
+        tracker.archived ? 1 : 0,
+        tracker.notes,
+        tracker.createdAt,
+        tracker.updatedAt,
+      );
+      deleteTrackerTags.run(tracker.id);
+      for (const tag of tracker.tags) {
+        const mapped = tagIdMap.get(tag.id);
+        if (mapped) insertTrackerTag.run(tracker.id, mapped);
+      }
+      for (const log of tracker.logs) {
+        insertLog.run(log.id, tracker.id, log.date, log.value, log.status, log.note, log.createdAt);
+      }
+      for (const milestone of tracker.milestones) {
+        insertMilestone.run(
+          milestone.id,
+          tracker.id,
+          milestone.title,
+          milestone.sortOrder,
+          milestone.completed ? 1 : 0,
+          milestone.completedAt,
+          milestone.dueDate,
+        );
+      }
+    }
+  });
+  run();
+  return {
+    trackers: payload.trackers.length,
+    logs: payload.trackers.reduce((sum, tracker) => sum + tracker.logs.length, 0),
+    tags: payload.tags.length,
   };
 }
 
