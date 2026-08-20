@@ -46,11 +46,11 @@ describe("copyNativeModules", () => {
 
 describe("packagedResourcesDir", () => {
   it("uses Contents/Resources on macOS and resources elsewhere", () => {
-    const macApp = join("Leaps.app", "Contents", "MacOS");
-    const winApp = join("win-unpacked");
-    const linuxApp = join("linux-unpacked");
-    expect(packagedResourcesDir(macApp, "darwin")).toBe(join("Leaps.app", "Contents", "Resources"));
-    expect(packagedResourcesDir(winApp, "win32")).toBe(join("win-unpacked", "resources"));
-    expect(packagedResourcesDir(linuxApp, "linux")).toBe(join("linux-unpacked", "resources"));
+    const macApp = join("dist", "mac", "Leaps.app", "Contents", "MacOS");
+    const winApp = join("dist", "win-unpacked");
+    const linuxApp = join("dist", "linux-unpacked");
+    expect(packagedResourcesDir(macApp, "darwin")).toBe(join("dist", "mac", "Leaps.app", "Contents", "Resources"));
+    expect(packagedResourcesDir(winApp, "win32")).toBe(join("dist", "win-unpacked", "resources"));
+    expect(packagedResourcesDir(linuxApp, "linux")).toBe(join("dist", "linux-unpacked", "resources"));
   });
 });
