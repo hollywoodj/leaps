@@ -41,4 +41,6 @@ npm run electron:build:win
 npm run electron:build:linux
 ```
 
+Pushing to `main` tags a GitHub Release and uploads those installers (same auto-release flow as the other desktop apps). The first release is `v1.0.0`; later pushes bump the patch. Skip a commit with `[skip release]`, or run the **Release** workflow by hand with a `vMAJOR.MINOR.PATCH` tag.
+
 Optional: `LEAPS_DB_PATH=/absolute/path/to/leaps.db` to put the database somewhere else when running the web server.

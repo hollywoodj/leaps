@@ -132,6 +132,16 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+function sqliteModulePath() {
+  if (app.isPackaged) {
+    return [
+      path.join(process.resourcesPath, "app.asar.unpacked", "node_modules"),
+      path.join(process.resourcesPath, "app.asar", "node_modules"),
+    ].join(path.delimiter);
+  }
+  return path.join(__dirname, "..", "node_modules");
+}
+
 function startBackend(port) {
   return new Promise((resolve, reject) => {
     fs.mkdirSync(userDataDir(), { recursive: true });
@@ -148,21 +158,23 @@ function startBackend(port) {
       HOSTNAME: "127.0.0.1",
       NODE_ENV: "production",
       LEAPS_DB_PATH: dbPath(),
+      NODE_PATH: sqliteModulePath(),
     };
 
     if (app.isPackaged) {
       env.ELECTRON_RUN_AS_NODE = "1";
-      env.NODE_PATH = path.join(process.resourcesPath, "app.asar.unpacked", "node_modules");
       serverProcess = spawn(process.execPath, [serverJs], {
         cwd: dir,
         env,
         stdio: "inherit",
+        windowsHide: true,
       });
     } else {
       serverProcess = spawn(process.platform === "win32" ? "node.exe" : "node", [serverJs], {
         cwd: dir,
         env,
         stdio: "inherit",
+        windowsHide: true,
       });
     }
 
@@ -199,23 +211,33 @@ function windowOptions() {
   };
 }
 
-async function createWindow(url) {
-  const win = new BrowserWindow(windowOptions());
-  mainWindow = win;
-  win.once("ready-to-show", () => win.show());
+function attachWindowGuards(win) {
   win.webContents.setWindowOpenHandler(({ url: openUrl }) => {
     shell.openExternal(openUrl);
     return { action: "deny" };
   });
   win.webContents.on("will-navigate", (event, nextUrl) => {
     if (nextUrl.startsWith("http://127.0.0.1:") || nextUrl.startsWith("http://localhost:")) return;
+    if (nextUrl.startsWith("file:")) return;
     event.preventDefault();
     shell.openExternal(nextUrl);
   });
-  await win.loadURL(url);
   win.on("closed", () => {
     if (mainWindow === win) mainWindow = null;
   });
+}
+
+async function createWindow() {
+  const win = new BrowserWindow(windowOptions());
+  mainWindow = win;
+  attachWindowGuards(win);
+  win.once("ready-to-show", () => win.show());
+  await win.loadFile(path.join(__dirname, "loading.html"));
+  return win;
+}
+
+async function loadApp(win, url) {
+  await win.loadURL(url);
 }
 
 const gotLock = app.requestSingleInstanceLock();
@@ -232,13 +254,14 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     buildMenu();
     try {
+      const win = await createWindow();
       if (process.env.ELECTRON_START_URL) {
         serverPort = Number(new URL(process.env.ELECTRON_START_URL).port || 3001);
-        await createWindow(process.env.ELECTRON_START_URL);
+        await loadApp(win, process.env.ELECTRON_START_URL);
       } else {
         serverPort = await getFreePort();
         await startBackend(serverPort);
-        await createWindow(`http://127.0.0.1:${serverPort}/`);
+        await loadApp(win, `http://127.0.0.1:${serverPort}/`);
       }
       initAutoUpdate();
     } catch (err) {
@@ -254,7 +277,9 @@ if (!gotLock) {
   app.on("activate", async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const url = process.env.ELECTRON_START_URL || (serverProcess ? `http://127.0.0.1:${serverPort}/` : null);
-      if (url) await createWindow(url);
+      if (!url) return;
+      const win = await createWindow();
+      await loadApp(win, url);
     }
   });
 

@@ -4,6 +4,7 @@
   "private": true,
   "description": "Leaps — a Strides-style goal and habit tracker with a local SQLite database.",
   "author": "hollywoodj",
+  "desktopName": "Leaps",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1 --port 3001",
@@ -53,7 +54,15 @@
     "copyright": "Copyright © 2026 Leaps",
     "files": [
       "electron/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/bindings/**/*",
+      "node_modules/file-uri-to-path/**/*",
+      "!node_modules/next/**",
+      "!node_modules/react/**",
+      "!node_modules/react-dom/**",
+      "!node_modules/lucide-react/**",
+      "!node_modules/clsx/**"
     ],
     "extraResources": [
       {
@@ -85,7 +94,8 @@
       "backgroundColor": "#1b57b5"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "artifactName": "${productName}-${version}-setup.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -97,7 +107,11 @@
     "linux": {
       "target": ["AppImage"],
       "category": "Office",
-      "desktopName": "Leaps",
+      "desktop": {
+        "entry": {
+          "Name": "Leaps"
+        }
+      },
       "syncDesktopName": true,
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
