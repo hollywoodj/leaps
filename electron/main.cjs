@@ -1,10 +1,19 @@
-const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, Menu, shell, dialog, ipcMain, utilityProcess } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
-const http = require("node:http");
 const net = require("node:net");
 const { spawn } = require("node:child_process");
 const { initAutoUpdate } = require("./updater.cjs");
+const {
+  captureProcessOutput,
+  createBackendEnv,
+  createLogBuffer,
+  formatBackendError,
+  logsText,
+  spawnStdio,
+  sqliteModulePath,
+  waitForHealth,
+} = require("./backend-utils.cjs");
 
 const APP_NAME = "Leaps";
 const isMac = process.platform === "darwin";
@@ -24,25 +33,6 @@ function dbPath() {
 function standaloneDir() {
   if (app.isPackaged) return path.join(process.resourcesPath, "standalone");
   return path.join(__dirname, "..", ".next", "standalone");
-}
-
-function waitForHealth(port, attempts = 80) {
-  return new Promise((resolve, reject) => {
-    let n = 0;
-    const tick = () => {
-      const req = http.get(`http://127.0.0.1:${port}/api/health`, (res) => {
-        res.resume();
-        if (res.statusCode === 200) resolve();
-        else if (++n >= attempts) reject(new Error("Server health check failed"));
-        else setTimeout(tick, 250);
-      });
-      req.on("error", () => {
-        if (++n >= attempts) reject(new Error("Server did not start"));
-        else setTimeout(tick, 250);
-      });
-    };
-    tick();
-  });
 }
 
 function getFreePort() {
@@ -132,16 +122,6 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-function sqliteModulePath() {
-  if (app.isPackaged) {
-    return [
-      path.join(process.resourcesPath, "app.asar.unpacked", "node_modules"),
-      path.join(process.resourcesPath, "app.asar", "node_modules"),
-    ].join(path.delimiter);
-  }
-  return path.join(__dirname, "..", "node_modules");
-}
-
 function startBackend(port) {
   return new Promise((resolve, reject) => {
     fs.mkdirSync(userDataDir(), { recursive: true });
@@ -152,44 +132,87 @@ function startBackend(port) {
       return;
     }
 
-    const env = {
-      ...process.env,
-      PORT: String(port),
-      HOSTNAME: "127.0.0.1",
-      NODE_ENV: "production",
-      LEAPS_DB_PATH: dbPath(),
-      NODE_PATH: sqliteModulePath(),
+    const env = createBackendEnv({
+      port,
+      dbPath: dbPath(),
+      nodePath: sqliteModulePath({
+        isPackaged: app.isPackaged,
+        resourcesPath: process.resourcesPath,
+        standaloneDir: dir,
+        projectNodeModules: path.join(__dirname, "..", "node_modules"),
+      }),
+      baseEnv: process.env,
+      packaged: app.isPackaged,
+    });
+
+    const logs = createLogBuffer();
+    let settled = false;
+    const succeed = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      const message = err instanceof Error ? err.message : String(err);
+      stopBackend();
+      reject(new Error(message));
     };
 
-    if (app.isPackaged) {
-      env.ELECTRON_RUN_AS_NODE = "1";
+    if (app.isPackaged && typeof utilityProcess?.fork === "function") {
+      serverProcess = utilityProcess.fork(serverJs, [], {
+        cwd: dir,
+        env,
+        stdio: "pipe",
+        serviceName: "leaps-server",
+      });
+    } else if (app.isPackaged) {
       serverProcess = spawn(process.execPath, [serverJs], {
         cwd: dir,
         env,
-        stdio: "inherit",
+        stdio: spawnStdio(),
         windowsHide: true,
       });
     } else {
       serverProcess = spawn(process.platform === "win32" ? "node.exe" : "node", [serverJs], {
         cwd: dir,
         env,
-        stdio: "inherit",
+        stdio: spawnStdio(),
         windowsHide: true,
       });
     }
 
-    serverProcess.on("error", reject);
-    serverProcess.on("exit", (code) => {
-      if (code && code !== 0) console.error(`${APP_NAME} server exited with code ${code}`);
+    captureProcessOutput(serverProcess, logs);
+    serverProcess.on?.("error", (err) => {
+      fail(new Error(formatBackendError({ logs: logsText(logs), serverJs, cause: err.message })));
     });
-    waitForHealth(port).then(resolve).catch(reject);
+    serverProcess.on("exit", (code) => {
+      if (settled) {
+        if (code) console.error(`${APP_NAME} server exited with code ${code}`);
+        return;
+      }
+      fail(new Error(formatBackendError({ code, logs: logsText(logs), serverJs })));
+    });
+
+    waitForHealth(port, { isAborted: () => settled }).then(succeed).catch((err) => {
+      fail(new Error(formatBackendError({ logs: logsText(logs), serverJs, cause: err.message })));
+    });
   });
 }
 
 function stopBackend() {
-  if (serverProcess && !serverProcess.killed) {
-    serverProcess.kill("SIGTERM");
-    serverProcess = null;
+  if (!serverProcess) return;
+  const child = serverProcess;
+  serverProcess = null;
+  try {
+    if (process.platform === "win32" && child.pid) {
+      spawn("taskkill", ["/pid", String(child.pid), "/f", "/t"], { windowsHide: true, stdio: "ignore" });
+    } else if (typeof child.kill === "function") {
+      child.kill();
+    }
+  } catch (err) {
+    console.error(`Failed to stop ${APP_NAME} server`, err);
   }
 }
 
