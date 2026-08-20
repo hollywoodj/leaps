@@ -46,22 +46,22 @@ export function LogValueModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 sm:items-center">
-      <div className="card w-full max-w-md p-5">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
+      <div className="w-full max-w-md rounded-t-3xl bg-white p-5 shadow-sheet sm:rounded-3xl">
         <div className="mb-4 flex items-start justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted">Log</div>
-            <h2 className="text-lg font-semibold">{title}</h2>
+            <div className="text-[12px] font-semibold uppercase tracking-wide text-muted">Log</div>
+            <h2 className="text-[20px] font-semibold text-label">{title}</h2>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full p-1 text-muted hover:bg-stone-100">
+          <button type="button" onClick={onClose} className="rounded-full p-1 text-muted" aria-label="Close">
             <X size={18} />
           </button>
         </div>
-        <label className="text-xs font-medium text-muted">{unit || "Value"}</label>
+        <label className="text-[12px] font-medium text-muted">{unit || "Value"}</label>
         <div className="mt-1 flex items-center gap-2">
           <button
             type="button"
-            className="flex h-11 w-11 items-center justify-center rounded-xl bg-stone-100"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-grouped text-ios"
             onClick={() => setValue(String(Math.max(0, (Number(value) || 0) - 1)))}
           >
             <Minus size={16} />
@@ -71,11 +71,11 @@ export function LogValueModal({
             inputMode="decimal"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            className="h-11 flex-1 rounded-xl border border-stone-200 px-3 text-center text-lg font-semibold outline-none focus:border-teal"
+            className="h-12 flex-1 rounded-xl bg-grouped px-3 text-center text-2xl font-semibold text-label outline-none"
           />
           <button
             type="button"
-            className="flex h-11 w-11 items-center justify-center rounded-xl bg-stone-100"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-grouped text-ios"
             onClick={() => setValue(String((Number(value) || 0) + 1))}
           >
             <Plus size={16} />
@@ -87,7 +87,7 @@ export function LogValueModal({
               key={n}
               type="button"
               onClick={() => setValue(String((Number(value) || 0) + n))}
-              className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold"
+              className="rounded-full bg-grouped px-3 py-1 text-xs font-semibold text-ios"
             >
               +{n}
             </button>
@@ -97,16 +97,16 @@ export function LogValueModal({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Note (optional)"
-          className="mt-4 h-20 w-full resize-none rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-teal"
+          className="mt-4 h-20 w-full resize-none rounded-xl bg-grouped px-3 py-2 text-sm outline-none"
         />
         <button
           type="button"
           disabled={saving}
-          onClick={submit}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-teal py-3 text-sm font-semibold text-white disabled:opacity-60"
+          onClick={() => void submit()}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-ios py-3 text-[16px] font-semibold text-white disabled:opacity-60"
         >
           <Check size={16} />
-          Save log
+          Save
         </button>
       </div>
     </div>

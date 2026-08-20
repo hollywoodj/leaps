@@ -3,20 +3,31 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f3f1ec;
-  --ink: #1c1917;
+  --navy: #1b57b5;
+  --navy-deep: #15448f;
+  --ios-blue: #007aff;
+  --green: #34c759;
+  --red: #ff3b30;
+  --label: #163a73;
+  --muted: #8e8e93;
+  --separator: rgba(60, 60, 67, 0.18);
+  --grouped: #f2f2f7;
+  --fill: #e5e5ea;
+  --bg: #f2f2f7;
   color-scheme: light;
 }
 
 html,
 body {
   min-height: 100%;
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--grouped);
+  color: var(--label);
 }
 
 body {
-  font-feature-settings: "ss01" on, "cv11" on;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button,
@@ -27,23 +38,55 @@ select {
 }
 
 ::selection {
-  background: #99f6e4;
+  background: rgba(0, 122, 255, 0.18);
 }
 
-.card {
-  @apply rounded-2xl bg-white shadow-card;
+.ios-app {
+  min-height: 100vh;
+  background: #0e3a82;
 }
 
-.field {
-  @apply w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-ink outline-none focus:border-teal;
+.ios-screen {
+  min-height: 100vh;
+  background: var(--grouped);
+  overflow-x: hidden;
+}
+
+@media (min-width: 768px) {
+  .ios-app {
+    display: flex;
+    justify-content: center;
+    padding: 28px 16px 40px;
+    background:
+      radial-gradient(1200px 500px at 50% -10%, #3b82f6 0%, transparent 55%),
+      #0b3d8c;
+  }
+
+  .ios-screen {
+    width: min(780px, 100%);
+    min-height: calc(100vh - 68px);
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(8, 28, 70, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+}
+
+.navy-bar {
+  background: linear-gradient(180deg, #1f5fc4 0%, #1b57b5 100%);
+  color: white;
+}
+
+.hairline {
+  box-shadow: inset 0 -0.5px 0 var(--separator);
 }
 
 .pace-track {
   position: relative;
-  height: 8px;
+  height: 5px;
   overflow: visible;
   border-radius: 999px;
-  background: rgba(28, 25, 23, 0.08);
+  background: #e5e5ea;
 }
 
 .pace-fill {
@@ -54,21 +97,46 @@ select {
 
 .pace-marker {
   position: absolute;
-  top: -3px;
+  top: -4px;
+  z-index: 1;
   width: 2px;
-  height: 14px;
-  border-radius: 2px;
-  background: #1c1917;
-  opacity: 0.45;
+  height: 13px;
+  border-radius: 1px;
+  background: #3a3a3c;
   transform: translateX(-1px);
 }
 
-.tab-active {
-  color: #0f766e;
+.tab-bar {
+  padding-bottom: max(0.4rem, env(safe-area-inset-bottom));
 }
 
-@media (max-width: 767px) {
+.app-pad {
+  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
   .app-pad {
-    padding-bottom: 6.5rem;
+    padding-bottom: 5.5rem;
   }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.field-ios {
+  background: transparent;
+  border: none;
+  outline: none;
+  text-align: right;
+  color: inherit;
+  min-width: 0;
+}
+
+.field-ios:focus {
+  outline: none;
 }

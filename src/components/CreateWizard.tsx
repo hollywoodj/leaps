@@ -1,18 +1,21 @@
 "use client";
 
+import { HeaderButton, NavHeader } from "@/components/NavHeader";
 import { api } from "@/lib/client";
 import { EMOJI_SET, TRACKER_COLORS } from "@/lib/colors";
 import { addDays, todayISO } from "@/lib/dates";
+import { typeCopy } from "@/lib/labels";
 import type { RepeatKind, Template, TrackerInput, TrackerType } from "@/lib/types";
 import clsx from "clsx";
+import { BarChart3, Check, ChevronLeft, ChevronRight, SlidersHorizontal, SquareCheck, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-const TYPES: { id: TrackerType; title: string; body: string }[] = [
-  { id: "habit", title: "Habit", body: "Yes/no streaks. Good or bad habits with flexible due days." },
-  { id: "target", title: "Target", body: "Hit a number by a date. Pace line shows if you are ahead or behind." },
-  { id: "average", title: "Average", body: "Keep a rolling average — sleep, steps, spending, anything numeric." },
-  { id: "project", title: "Project", body: "Milestones and a percent complete, with a deadline pace line." },
+const TYPES: { id: TrackerType; icon: typeof SquareCheck }[] = [
+  { id: "habit", icon: SquareCheck },
+  { id: "target", icon: TrendingUp },
+  { id: "average", icon: BarChart3 },
+  { id: "project", icon: SlidersHorizontal },
 ];
 
 const WEEKDAYS = [
@@ -56,8 +59,6 @@ export function CreateWizard() {
     void api<{ categories: Category[] }>("/api/templates").then((payload) => setCategories(payload.categories));
   }, []);
 
-  const preview = useMemo(() => form, [form]);
-
   function applyTemplate(template: Template) {
     setForm({
       title: template.title,
@@ -98,51 +99,61 @@ export function CreateWizard() {
     }
   }
 
+  const copy = typeCopy(form.type);
+
   return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal">Step {step} of 3</p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-        {step === 1 ? "What do you want to track?" : step === 2 ? "Customize it" : "When is it due?"}
-      </h1>
+    <div className="min-h-screen bg-white">
+      <NavHeader
+        title="Add Tracker"
+        subtitle={`Step ${step} of 3`}
+        left={
+          <HeaderButton
+            label="Back"
+            onClick={() => {
+              if (step === 1) router.push("/");
+              else setStep((s) => (s === 3 ? 2 : 1));
+            }}
+          >
+            <ChevronLeft size={26} />
+          </HeaderButton>
+        }
+        right={
+          step < 3 ? (
+            <HeaderButton label="Next" onClick={() => setStep((s) => (s === 1 ? 2 : 3))}>
+              <ChevronRight size={26} />
+            </HeaderButton>
+          ) : (
+            <HeaderButton label="Save" onClick={() => void save()}>
+              <Check size={22} />
+            </HeaderButton>
+          )
+        }
+      />
 
       {step === 1 && (
-        <div className="mt-6 space-y-8">
-          <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Create from scratch</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {TYPES.map((type) => (
-                <button
-                  key={type.id}
-                  type="button"
-                  onClick={() => {
-                    setForm((curr) => ({
-                      ...curr,
-                      type: type.id,
-                      endDate: type.id === "target" || type.id === "project" ? addDays(todayISO(), 90) : null,
-                    }));
-                    setStep(2);
-                  }}
-                  className="card p-4 text-left hover:ring-2 hover:ring-teal/30"
-                >
-                  <div className="font-semibold">{type.title}</div>
-                  <p className="mt-1 text-sm text-muted">{type.body}</p>
-                </button>
-              ))}
-            </div>
-          </div>
+        <div className="pb-8">
+          <button
+            type="button"
+            onClick={() => setStep(2)}
+            className="flex w-full items-center justify-between border-b border-black/[0.06] px-4 py-4 text-left"
+          >
+            <span className="text-[16px] font-semibold text-ios">Create Tracker</span>
+            <ChevronRight size={18} className="text-muted" />
+          </button>
           {categories.map((group) => (
             <div key={group.category}>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{group.category}</h2>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <h2 className="bg-grouped px-4 py-2 text-[13px] font-semibold uppercase tracking-wide text-muted">{group.category}</h2>
+              <div className="divide-y divide-black/[0.06]">
                 {group.templates.map((template) => (
                   <button
                     key={template.id}
                     type="button"
                     onClick={() => applyTemplate(template)}
-                    className="card flex items-center gap-2 p-3 text-left hover:ring-2 hover:ring-teal/30"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left"
                   >
                     <span className="text-xl">{template.emoji}</span>
-                    <span className="text-sm font-semibold">{template.title}</span>
+                    <span className="flex-1 text-[16px] font-medium text-label">{template.title}</span>
+                    <span className="text-[12px] capitalize text-muted">{template.type}</span>
                   </button>
                 ))}
               </div>
@@ -152,149 +163,169 @@ export function CreateWizard() {
       )}
 
       {step === 2 && (
-        <div className="card mt-6 space-y-4 p-4">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Name
-            <input
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="field mt-1"
-              placeholder="e.g. Meditate"
-            />
-          </label>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted">Emoji</div>
-            <div className="mt-2 flex flex-wrap gap-1">
-              {EMOJI_SET.map((emoji) => (
+        <div>
+          <input
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="Tracker Name"
+            className="w-full border-b border-black/[0.08] px-4 py-4 text-[20px] font-semibold text-good outline-none placeholder:text-good/70"
+          />
+          <p className="px-4 py-3 text-center text-[14px] text-muted">How do you want to track this?</p>
+          <div className="divide-y divide-black/[0.06]">
+            {TYPES.map((type) => {
+              const info = typeCopy(type.id);
+              const selected = form.type === type.id;
+              const Icon = type.icon;
+              return (
                 <button
-                  key={emoji}
+                  key={type.id}
                   type="button"
-                  onClick={() => setForm({ ...form, emoji })}
-                  className={clsx("h-9 w-9 rounded-xl text-lg", form.emoji === emoji ? "bg-stone-200" : "bg-stone-50")}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted">Color</div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {TRACKER_COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setForm({ ...form, color })}
-                  className={clsx("h-7 w-7 rounded-full", form.color === color && "ring-2 ring-offset-2 ring-ink")}
-                  style={{ background: color }}
-                />
-              ))}
-            </div>
-          </div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Unit
-            <input
-              value={form.unit}
-              onChange={(e) => setForm({ ...form, unit: e.target.value })}
-              className="field mt-1"
-              placeholder="pages, miles, hours, $"
-            />
-          </label>
-          {form.type === "habit" && (
-            <>
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  checked={Boolean(form.isBad)}
-                  onChange={(e) => setForm({ ...form, isBad: e.target.checked, goalValue: e.target.checked ? 0 : form.goalValue })}
-                />
-                This is a bad habit I want to limit
-              </label>
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted">
-                {form.isBad ? "Max allowed per period" : "Times per period"}
-                <input
-                  type="number"
-                  value={form.isBad ? form.goalValue : form.timesPerPeriod}
-                  onChange={(e) =>
-                    setForm(
-                      form.isBad
-                        ? { ...form, goalValue: Number(e.target.value) }
-                        : { ...form, timesPerPeriod: Number(e.target.value) },
-                    )
-                  }
-                  className="field mt-1"
-                />
-              </label>
-            </>
-          )}
-          {(form.type === "target" || form.type === "average") && (
-            <label className="text-xs font-semibold uppercase tracking-wide text-muted">
-              {form.type === "target" ? "Goal value" : "Target average"}
-              <input
-                type="number"
-                value={form.goalValue}
-                onChange={(e) => setForm({ ...form, goalValue: Number(e.target.value) })}
-                className="field mt-1"
-              />
-            </label>
-          )}
-          {form.type === "project" && (
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted">Milestones</div>
-              <div className="mt-2 flex gap-2">
-                <input
-                  value={milestoneText}
-                  onChange={(e) => setMilestoneText(e.target.value)}
-                  className="field"
-                  placeholder="Add a milestone"
-                />
-                <button
-                  type="button"
-                  className="rounded-xl bg-stone-100 px-3 text-sm font-semibold"
                   onClick={() => {
-                    if (!milestoneText.trim()) return;
-                    setForm({ ...form, milestones: [...(form.milestones ?? []), { title: milestoneText.trim() }] });
-                    setMilestoneText("");
+                    setForm((curr) => ({
+                      ...curr,
+                      type: type.id,
+                      endDate: type.id === "target" || type.id === "project" ? curr.endDate || addDays(todayISO(), 90) : curr.endDate,
+                    }));
                   }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left"
                 >
-                  Add
+                  <Icon size={22} className={selected ? "text-good" : "text-navy"} />
+                  <span className="flex-1">
+                    <span className={clsx("block text-[16px] font-semibold", selected ? "text-good" : "text-label")}>{info.title}</span>
+                    <span className="text-[13px] text-muted">{info.subtitle}</span>
+                  </span>
+                  {selected && <Check size={18} className="text-good" />}
                 </button>
+              );
+            })}
+          </div>
+          <div className="mt-6 px-4 pb-8">
+            <div className="text-center text-[13px] font-bold uppercase tracking-wide text-navy">{copy.title}</div>
+            <div className="mt-1 text-center text-[13px] italic text-muted">{copy.examples}</div>
+            <div className="mt-4 rounded-xl border border-black/10 p-4">
+              <label className="text-[12px] font-semibold uppercase tracking-wide text-muted">Emoji</label>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {EMOJI_SET.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setForm({ ...form, emoji })}
+                    className={clsx("h-9 w-9 rounded-lg text-lg", form.emoji === emoji ? "bg-fill" : "bg-grouped")}
+                  >
+                    {emoji}
+                  </button>
+                ))}
               </div>
-              <ul className="mt-2 space-y-1 text-sm">
-                {form.milestones?.map((m, i) => (
-                  <li key={`${m.title}-${i}`} className="flex justify-between">
-                    {m.title}
+              <label className="mt-4 block text-[12px] font-semibold uppercase tracking-wide text-muted">Color</label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {TRACKER_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setForm({ ...form, color })}
+                    className={clsx("h-7 w-7 rounded-full", form.color === color && "ring-2 ring-offset-2 ring-ios")}
+                    style={{ background: color }}
+                  />
+                ))}
+              </div>
+              {form.type === "habit" && (
+                <>
+                  <label className="mt-4 flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.isBad)}
+                      onChange={(e) => setForm({ ...form, isBad: e.target.checked, goalValue: e.target.checked ? 0 : form.goalValue })}
+                    />
+                    This is a bad habit I want to limit
+                  </label>
+                  <label className="mt-3 block text-[12px] font-semibold uppercase tracking-wide text-muted">
+                    {form.isBad ? "Max allowed per period" : "Times per period"}
+                    <input
+                      type="number"
+                      value={form.isBad ? form.goalValue : form.timesPerPeriod}
+                      onChange={(e) =>
+                        setForm(
+                          form.isBad
+                            ? { ...form, goalValue: Number(e.target.value) }
+                            : { ...form, timesPerPeriod: Number(e.target.value) },
+                        )
+                      }
+                      className="field-ios mt-1 w-full text-left"
+                    />
+                  </label>
+                </>
+              )}
+              {(form.type === "target" || form.type === "average") && (
+                <label className="mt-3 block text-[12px] font-semibold uppercase tracking-wide text-muted">
+                  {form.type === "target" ? "Goal value" : "Target average"}
+                  <input
+                    type="number"
+                    value={form.goalValue}
+                    onChange={(e) => setForm({ ...form, goalValue: Number(e.target.value) })}
+                    className="field-ios mt-1 w-full text-left"
+                  />
+                </label>
+              )}
+              {form.type === "project" && (
+                <div className="mt-3">
+                  <div className="text-[12px] font-semibold uppercase tracking-wide text-muted">Milestones</div>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      value={milestoneText}
+                      onChange={(e) => setMilestoneText(e.target.value)}
+                      className="field-ios flex-1 text-left"
+                      placeholder="Add a milestone"
+                    />
                     <button
                       type="button"
-                      className="text-xs text-bad"
-                      onClick={() => setForm({ ...form, milestones: form.milestones?.filter((_, idx) => idx !== i) })}
+                      className="rounded-lg bg-grouped px-3 text-sm font-semibold text-ios"
+                      onClick={() => {
+                        if (!milestoneText.trim()) return;
+                        setForm({ ...form, milestones: [...(form.milestones ?? []), { title: milestoneText.trim() }] });
+                        setMilestoneText("");
+                      }}
                     >
-                      Remove
+                      Add
                     </button>
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {form.milestones?.map((m, i) => (
+                      <li key={`${m.title}-${i}`} className="flex justify-between">
+                        {m.title}
+                        <button
+                          type="button"
+                          className="text-xs text-bad"
+                          onClick={() => setForm({ ...form, milestones: form.milestones?.filter((_, idx) => idx !== i) })}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <label className="mt-3 block text-[12px] font-semibold uppercase tracking-wide text-muted">
+                Unit
+                <input
+                  value={form.unit}
+                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                  className="field-ios mt-1 w-full text-left"
+                  placeholder="pages, miles, hours, $"
+                />
+              </label>
             </div>
-          )}
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setStep(1)} className="flex-1 rounded-xl bg-stone-100 py-3 text-sm font-semibold">
-              Back
-            </button>
-            <button type="button" onClick={() => setStep(3)} className="flex-1 rounded-xl bg-teal py-3 text-sm font-semibold text-white">
-              Next
-            </button>
           </div>
         </div>
       )}
 
       {step === 3 && (
-        <div className="card mt-6 space-y-4 p-4">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Repeat
+        <div className="divide-y divide-black/[0.06]">
+          <label className="flex items-center justify-between px-4 py-3 text-[15px]">
+            <span className="text-muted">Repeat</span>
             <select
               value={form.repeatKind}
               onChange={(e) => setForm({ ...form, repeatKind: e.target.value as RepeatKind })}
-              className="field mt-1"
+              className="field-ios"
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
@@ -302,7 +333,7 @@ export function CreateWizard() {
             </select>
           </label>
           {form.repeatKind === "weekly" && (
-            <div className="flex gap-1">
+            <div className="flex gap-1 px-4 py-3">
               {WEEKDAYS.map((d) => {
                 const selected = form.weekdays?.includes(d.n);
                 return (
@@ -314,7 +345,7 @@ export function CreateWizard() {
                       const next = curr.includes(d.n) ? curr.filter((x) => x !== d.n) : [...curr, d.n];
                       setForm({ ...form, weekdays: next.length ? next : null });
                     }}
-                    className={clsx("h-9 w-9 rounded-full text-xs font-bold", selected ? "bg-ink text-white" : "bg-stone-100")}
+                    className={clsx("h-9 w-9 rounded-full text-xs font-bold", selected ? "bg-ios text-white" : "bg-grouped")}
                   >
                     {d.l}
                   </button>
@@ -322,46 +353,43 @@ export function CreateWizard() {
               })}
             </div>
           )}
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Start date
+          <label className="flex items-center justify-between px-4 py-3 text-[15px]">
+            <span className="text-muted">Start date</span>
             <input
               type="date"
               value={form.startDate}
               onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-              className="field mt-1"
+              className="field-ios"
             />
           </label>
-          {(preview.type === "target" || preview.type === "project") && (
-            <label className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Deadline
+          {(form.type === "target" || form.type === "project") && (
+            <label className="flex items-center justify-between px-4 py-3 text-[15px]">
+              <span className="text-muted">Deadline</span>
               <input
                 type="date"
                 value={form.endDate ?? ""}
                 onChange={(e) => setForm({ ...form, endDate: e.target.value || null })}
-                className="field mt-1"
+                className="field-ios"
               />
             </label>
           )}
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Notes
+          <div className="px-4 py-3">
+            <div className="text-[13px] text-muted">Notes</div>
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="field mt-1 h-20"
+              className="mt-2 h-24 w-full resize-none rounded-xl bg-grouped px-3 py-2 text-[15px] outline-none"
             />
-          </label>
-          {error && <p className="text-sm text-bad">{error}</p>}
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setStep(2)} className="flex-1 rounded-xl bg-stone-100 py-3 text-sm font-semibold">
-              Back
-            </button>
+          </div>
+          {error && <p className="px-4 py-3 text-sm text-bad">{error}</p>}
+          <div className="px-4 py-4">
             <button
               type="button"
               disabled={saving}
               onClick={() => void save()}
-              className="flex-1 rounded-xl bg-teal py-3 text-sm font-semibold text-white"
+              className="w-full rounded-xl bg-ios py-3 text-[16px] font-semibold text-white disabled:opacity-60"
             >
-              Start tracking
+              Start Tracking
             </button>
           </div>
         </div>
