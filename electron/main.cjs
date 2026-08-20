@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, dialog, ipcMain, utilityProcess } = require("electron");
+const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const net = require("node:net");
@@ -8,8 +8,10 @@ const {
   captureProcessOutput,
   createBackendEnv,
   createLogBuffer,
+  drainOutput,
   formatBackendError,
   logsText,
+  persistLogs,
   spawnStdio,
   sqliteModulePath,
   waitForHealth,
@@ -146,6 +148,7 @@ function startBackend(port) {
     });
 
     const logs = createLogBuffer();
+    const logFile = path.join(userDataDir(), "startup.log");
     let settled = false;
     const succeed = () => {
       if (settled) return;
@@ -156,47 +159,50 @@ function startBackend(port) {
       if (settled) return;
       settled = true;
       const message = err instanceof Error ? err.message : String(err);
+      try {
+        persistLogs(logFile, `${message}\n`);
+      } catch {
+        /* ignore log write failures */
+      }
       stopBackend();
       reject(new Error(message));
     };
 
-    if (app.isPackaged && typeof utilityProcess?.fork === "function") {
-      serverProcess = utilityProcess.fork(serverJs, [], {
-        cwd: dir,
-        env,
-        stdio: "pipe",
-        serviceName: "leaps-server",
-      });
-    } else if (app.isPackaged) {
-      serverProcess = spawn(process.execPath, [serverJs], {
-        cwd: dir,
-        env,
-        stdio: spawnStdio(),
-        windowsHide: true,
-      });
-    } else {
-      serverProcess = spawn(process.platform === "win32" ? "node.exe" : "node", [serverJs], {
-        cwd: dir,
-        env,
-        stdio: spawnStdio(),
-        windowsHide: true,
-      });
-    }
+    serverProcess = spawn(app.isPackaged ? process.execPath : process.platform === "win32" ? "node.exe" : "node", [serverJs], {
+      cwd: dir,
+      env,
+      stdio: spawnStdio(),
+      windowsHide: true,
+    });
 
     captureProcessOutput(serverProcess, logs);
-    serverProcess.on?.("error", (err) => {
-      fail(new Error(formatBackendError({ logs: logsText(logs), serverJs, cause: err.message })));
+    serverProcess.on("error", (err) => {
+      fail(new Error(formatBackendError({ logs: logsText(logs), serverJs, cause: err.message, logFile })));
     });
     serverProcess.on("exit", (code) => {
       if (settled) {
         if (code) console.error(`${APP_NAME} server exited with code ${code}`);
         return;
       }
-      fail(new Error(formatBackendError({ code, logs: logsText(logs), serverJs })));
+      drainOutput(() => {
+        const output = logsText(logs);
+        try {
+          persistLogs(logFile, output);
+        } catch {
+          /* ignore log write failures */
+        }
+        fail(new Error(formatBackendError({ code, logs: output, serverJs, logFile })));
+      });
     });
 
     waitForHealth(port, { isAborted: () => settled }).then(succeed).catch((err) => {
-      fail(new Error(formatBackendError({ logs: logsText(logs), serverJs, cause: err.message })));
+      const output = logsText(logs);
+      try {
+        persistLogs(logFile, output);
+      } catch {
+        /* ignore log write failures */
+      }
+      fail(new Error(formatBackendError({ logs: output, serverJs, cause: err.message, logFile })));
     });
   });
 }

@@ -37,7 +37,8 @@ describe("electron main process", () => {
   it("does not inherit stdio from a GUI parent", () => {
     const main = readFileSync(new URL("../../electron/main.cjs", import.meta.url), "utf8");
     expect(main).not.toMatch(/stdio:\s*["']inherit["']/);
-    expect(main).toContain("utilityProcess.fork");
-    expect(main).toContain('stdio: "pipe"');
+    expect(main).not.toContain("utilityProcess");
+    expect(main).toContain("spawnStdio()");
+    expect(main).toContain("startup.log");
   });
 });

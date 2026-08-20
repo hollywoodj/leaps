@@ -35,7 +35,10 @@ function createBackendEnv({ port, dbPath, nodePath, baseEnv, packaged }) {
     LEAPS_DB_PATH: dbPath,
     NODE_PATH: nodePath,
   });
-  if (packaged) env.ELECTRON_RUN_AS_NODE = "1";
+  if (packaged) {
+    env.ELECTRON_RUN_AS_NODE = "1";
+    env.ELECTRON_NO_ASAR = "1";
+  }
   return env;
 }
 
@@ -63,12 +66,23 @@ function captureProcessOutput(child, buffer) {
   child.stderr?.on("data", onData);
 }
 
-function formatBackendError({ code, logs, serverJs, cause }) {
+function formatBackendError({ code, logs, serverJs, cause, logFile }) {
   const output = (logs || "").trim();
   const details = output ? `\n\n${output}` : `\n\nNo server output was captured. Expected Next.js at ${serverJs}`;
-  if (cause) return `${cause}${details}`;
-  if (code === 0 || code == null) return `The Leaps server stopped before it was ready.${details}`;
-  return `The Leaps server exited with code ${code} before it was ready.${details}`;
+  const logHint = logFile ? `\n\nFull log: ${logFile}` : "";
+  if (cause) return `${cause}${details}${logHint}`;
+  if (code === 0 || code == null) return `The Leaps server stopped before it was ready.${details}${logHint}`;
+  return `The Leaps server exited with code ${code} before it was ready.${details}${logHint}`;
+}
+
+function drainOutput(done, delayMs = 200) {
+  setTimeout(done, delayMs);
+}
+
+function persistLogs(file, text) {
+  const fs = require("node:fs");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, text || "");
 }
 
 function waitForHealth(port, options = {}) {
@@ -110,9 +124,11 @@ module.exports = {
   captureProcessOutput,
   createBackendEnv,
   createLogBuffer,
+  drainOutput,
   formatBackendError,
   logsText,
   nativeModulesToCopy,
+  persistLogs,
   sanitizeEnv,
   spawnStdio,
   sqliteModulePath,
