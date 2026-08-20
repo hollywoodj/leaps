@@ -2,9 +2,12 @@ const { cpSync, existsSync, mkdirSync, readdirSync, rmSync } = require("node:fs"
 const path = require("node:path");
 const { nativeModulesToCopy } = require("../electron/backend-utils.cjs");
 
-function packagedResourcesDir(appOutDir, electronPlatformName) {
-  if (electronPlatformName === "darwin") return path.join(appOutDir, "..", "Resources");
-  return path.join(appOutDir, "resources");
+function packagedResourcesDir(appOutDir, electronPlatformName, productName = "Leaps") {
+  if (electronPlatformName !== "darwin") return path.join(appOutDir, "resources");
+  // electron-builder 26 passes the folder that contains Foo.app (release/mac-arm64).
+  // Older layouts pass Contents/MacOS.
+  if (path.basename(appOutDir) === "MacOS") return path.join(appOutDir, "..", "Resources");
+  return path.join(appOutDir, `${productName}.app`, "Contents", "Resources");
 }
 
 function isSqlitePackageName(name) {
