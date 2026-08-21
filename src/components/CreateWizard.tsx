@@ -102,7 +102,7 @@ export function CreateWizard() {
   const copy = typeCopy(form.type);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-full bg-white">
       <NavHeader
         title="Add Tracker"
         subtitle={`Step ${step} of 3`}
@@ -168,7 +168,7 @@ export function CreateWizard() {
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             placeholder="Tracker Name"
-            className="w-full border-b border-black/[0.08] px-4 py-4 text-[20px] font-semibold text-good outline-none placeholder:text-good/70"
+            className="w-full border-b border-black/[0.08] px-4 py-4 text-[20px] font-semibold text-label outline-none placeholder:text-muted"
           />
           <p className="px-4 py-3 text-center text-[14px] text-muted">How do you want to track this?</p>
           <div className="divide-y divide-black/[0.06]">
@@ -333,7 +333,7 @@ export function CreateWizard() {
             </select>
           </label>
           {form.repeatKind === "weekly" && (
-            <div className="flex gap-1 px-4 py-3">
+            <div className="flex justify-between gap-1 px-4 py-3">
               {WEEKDAYS.map((d) => {
                 const selected = form.weekdays?.includes(d.n);
                 return (

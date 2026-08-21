@@ -104,7 +104,7 @@ export function ReportsView() {
       </NavHeader>
 
       {filterOpen && (
-        <div className="flex flex-wrap gap-2 bg-white px-4 py-3">
+        <div className="flex flex-wrap gap-2 border-b border-black/5 bg-white px-4 py-3">
           {PERIODS.map((p) => (
             <button
               key={p}
@@ -121,13 +121,23 @@ export function ReportsView() {
               {p}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setTagId("")}
+            className={clsx(
+              "rounded-full px-3 py-1 text-[12px] font-semibold",
+              !tagId ? "bg-ios text-white" : "bg-grouped text-label",
+            )}
+          >
+            All
+          </button>
           {tags.map((tag) => (
             <button
               key={tag.id}
               type="button"
               onClick={() => setTagId(tagId === tag.id ? "" : tag.id)}
               className="rounded-full px-3 py-1 text-[12px] font-semibold"
-              style={tagId === tag.id ? { background: tag.color, color: "white" } : { background: "#f2f2f7" }}
+              style={tagId === tag.id ? { background: tag.color, color: "white" } : { background: "#f2f2f7", color: "#163a73" }}
             >
               {tag.name}
             </button>
@@ -135,7 +145,7 @@ export function ReportsView() {
         </div>
       )}
 
-      <div className="flex items-center justify-between bg-[#ececf1] px-4 py-2 text-[13px] font-medium text-label">
+      <div className="flex items-center justify-between bg-grouped px-4 py-2 text-[13px] font-medium text-label">
         <button
           type="button"
           className="rounded-full p-1 text-navy disabled:text-muted disabled:opacity-40"

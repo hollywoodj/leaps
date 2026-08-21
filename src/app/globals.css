@@ -19,15 +19,19 @@
 
 html,
 body {
+  height: 100%;
   min-height: 100%;
+  min-height: 100dvh;
   background: var(--grouped);
   color: var(--label);
+  overscroll-behavior: none;
 }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
 
 button,
@@ -42,34 +46,27 @@ select {
 }
 
 .ios-app {
-  min-height: 100vh;
-  background: #0e3a82;
+  display: flex;
+  height: 100%;
+  min-height: 100dvh;
+  flex-direction: column;
+  background: var(--grouped);
 }
 
 .ios-screen {
-  min-height: 100vh;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
   background: var(--grouped);
-  overflow-x: hidden;
 }
 
-@media (min-width: 768px) {
-  .ios-app {
-    display: flex;
-    justify-content: center;
-    padding: 28px 16px 40px;
-    background:
-      radial-gradient(1200px 500px at 50% -10%, #3b82f6 0%, transparent 55%),
-      #0b3d8c;
-  }
-
-  .ios-screen {
-    width: min(780px, 100%);
-    min-height: calc(100vh - 68px);
-    border-radius: 28px;
-    overflow: hidden;
-    box-shadow: 0 30px 80px rgba(8, 28, 70, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-  }
+.ios-body {
+  min-height: 0;
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .navy-bar {
@@ -107,17 +104,15 @@ select {
 }
 
 .tab-bar {
+  position: relative;
+  z-index: 40;
+  flex-shrink: 0;
+  overflow: visible;
   padding-bottom: max(0.4rem, env(safe-area-inset-bottom));
 }
 
 .app-pad {
-  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
-}
-
-@media (min-width: 768px) {
-  .app-pad {
-    padding-bottom: 5.5rem;
-  }
+  padding-bottom: 1.25rem;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -139,4 +134,17 @@ select {
 
 .field-ios:focus {
   outline: none;
+}
+
+select.field-ios,
+input[type="date"].field-ios {
+  appearance: none;
+  max-width: 100%;
+  color: inherit;
+  background: transparent;
+}
+
+input[type="date"].field-ios::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
 }

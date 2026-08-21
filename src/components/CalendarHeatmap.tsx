@@ -57,7 +57,7 @@ export function CalendarHeatmap({
               type="button"
               disabled={!onSelect}
               onClick={() => onSelect?.(date)}
-              className="flex items-center justify-center py-0.5"
+              className="flex items-center justify-center py-0.5 disabled:cursor-default disabled:opacity-100"
             >
               <span
                 className={clsx(

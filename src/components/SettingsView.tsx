@@ -28,7 +28,7 @@ export function SettingsView() {
   }, []);
 
   return (
-    <div className="bg-grouped pb-10">
+    <div className="min-h-full bg-grouped pb-10">
       <NavHeader
         title="Settings"
         left={
@@ -79,6 +79,7 @@ export function SettingsView() {
       </div>
 
       <h2 className="px-4 pb-1 pt-6 text-[13px] font-semibold uppercase tracking-wide text-muted">Reorder trackers</h2>
+      {trackers.some((t) => !t.archived) ? (
       <ul className="divide-y divide-black/[0.06] border-y border-black/[0.06] bg-white">
         {trackers.filter((t) => !t.archived).map((tracker, index, list) => (
           <li key={tracker.id} className="flex items-center justify-between px-4 py-3">
@@ -116,6 +117,9 @@ export function SettingsView() {
           </li>
         ))}
       </ul>
+      ) : (
+        <p className="border-y border-black/[0.06] bg-white px-4 py-3 text-[15px] text-muted">No trackers yet.</p>
+      )}
 
       <h2 className="px-4 pb-1 pt-6 text-[13px] font-semibold uppercase tracking-wide text-muted">Data</h2>
       <div className="divide-y divide-black/[0.06] border-y border-black/[0.06] bg-white">
