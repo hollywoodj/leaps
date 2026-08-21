@@ -30,19 +30,19 @@ export function NavHeader({
   return (
     <header className="navy-bar sticky top-0 z-30 pt-[env(safe-area-inset-top)]">
       <div className="relative flex h-12 items-center px-2">
-        <div className="absolute left-1 flex items-center">{left}</div>
-        <div className="mx-auto flex max-w-[70%] flex-col items-center text-center">
+        <div className="absolute left-1 z-10 flex items-center">{left}</div>
+        <div className="mx-auto flex min-w-0 max-w-[calc(100%-6.5rem)] flex-col items-center text-center">
           {menu ? (
-            <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-1">
-              <span className="text-[17px] font-semibold tracking-tight">{title}</span>
-              <ChevronDown size={16} strokeWidth={2.4} />
+            <button type="button" onClick={() => setOpen((v) => !v)} className="flex max-w-full items-center gap-1">
+              <span className="truncate text-[17px] font-semibold tracking-tight">{title}</span>
+              <ChevronDown size={16} strokeWidth={2.4} className="shrink-0" />
             </button>
           ) : (
-            <div className="text-[17px] font-semibold tracking-tight">{title}</div>
+            <div className="max-w-full truncate text-[17px] font-semibold tracking-tight">{title}</div>
           )}
-          {subtitle && <div className="text-[11px] font-medium text-white/80">{subtitle}</div>}
+          {subtitle && <div className="max-w-full truncate text-[11px] font-medium text-white/80">{subtitle}</div>}
         </div>
-        <div className="absolute right-1 flex items-center">{right}</div>
+        <div className="absolute right-1 z-10 flex items-center">{right}</div>
         {open && menu && (
           <>
             <button type="button" className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-label="Close menu" />
@@ -73,7 +73,7 @@ export function NavHeader({
                 type="button"
                 onClick={() => onTab?.(tab)}
                 className={clsx(
-                  "flex-1 rounded-md px-1 py-1.5 text-[13px] font-semibold",
+                  "min-w-0 flex-1 truncate rounded-md px-1 py-1.5 text-[13px] font-semibold",
                   activeTab === tab ? "bg-white text-navy" : "text-white/90",
                 )}
               >
@@ -99,7 +99,8 @@ export function HeaderButton({
   href?: string;
   label: string;
 }) {
-  const className = "flex h-10 w-10 items-center justify-center rounded-full text-white";
+  const className =
+    "flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10";
   if (href) {
     return (
       <Link href={href} className={className} aria-label={label}>

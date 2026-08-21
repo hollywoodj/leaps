@@ -10,6 +10,7 @@ import { todayISO } from "@/lib/dates";
 import { classifyToday, sumValues } from "@/lib/stats";
 import type { LogEntry, LogStatus, Tag, TodayItem } from "@/lib/types";
 import { Settings, SlidersHorizontal } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type TodayResponse = {
@@ -267,9 +268,9 @@ export function TodayView() {
           <h2 className="mt-3 text-lg font-semibold">Nothing due on this day</h2>
           <p className="mt-1 text-sm text-muted">Create a habit, target, average, or project to start tracking.</p>
           <div className="mt-5 flex justify-center gap-2">
-            <a href="/create" className="rounded-full bg-ios px-4 py-2 text-sm font-semibold text-white">
+            <Link href="/create" className="rounded-full bg-ios px-4 py-2 text-sm font-semibold text-white">
               Create tracker
-            </a>
+            </Link>
             <button
               type="button"
               className="rounded-full bg-fill px-4 py-2 text-sm font-semibold"

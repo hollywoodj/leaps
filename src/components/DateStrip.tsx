@@ -55,7 +55,7 @@ export function DateStrip({ date, onChange }: { date: string; onChange: (next: s
   }
 
   return (
-    <div className="bg-white">
+    <div className="hairline bg-white">
       <div className="flex items-center gap-1 px-3 pt-2">
         <button
           type="button"

@@ -231,7 +231,7 @@ function windowOptions() {
     minWidth: 390,
     minHeight: 640,
     title: APP_NAME,
-    backgroundColor: "#0b3d8c",
+    backgroundColor: "#f2f2f7",
     show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),

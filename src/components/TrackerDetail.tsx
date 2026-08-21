@@ -73,7 +73,14 @@ export function TrackerDetail() {
   if (!data) {
     return (
       <div>
-        <NavHeader title="Tracker" />
+        <NavHeader
+          title="Tracker"
+          left={
+            <HeaderButton href="/" label="Back">
+              <ChevronLeft size={26} />
+            </HeaderButton>
+          }
+        />
         <p className="px-4 py-8 text-center text-sm text-muted">Loading tracker…</p>
       </div>
     );
@@ -123,7 +130,8 @@ export function TrackerDetail() {
         <button
           type="button"
           onClick={() => setLogOpen(true)}
-          className="absolute bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-navy text-2xl text-white shadow-card"
+          className="fixed z-30 flex h-14 w-14 items-center justify-center rounded-full bg-navy text-2xl text-white shadow-card"
+          style={{ bottom: "calc(6rem + env(safe-area-inset-bottom))", right: "1.25rem" }}
           aria-label="Log"
         >
           +
@@ -446,7 +454,7 @@ function SettingsForm({
           </select>
         </Field>
         {repeatKind === "weekly" && (
-          <div className="flex gap-1 px-4 py-3">
+          <div className="flex justify-between gap-1 px-4 py-3">
             {WEEKDAYS.map((d) => (
               <button
                 key={d.n}

@@ -47,7 +47,7 @@ export function LogValueModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
-      <div className="w-full max-w-md rounded-t-3xl bg-white p-5 shadow-sheet sm:rounded-3xl">
+      <div className="w-full max-w-md rounded-t-3xl bg-white px-5 pt-5 shadow-sheet sm:rounded-3xl pb-[max(1.25rem,env(safe-area-inset-bottom))]">
         <div className="mb-4 flex items-start justify-between">
           <div>
             <div className="text-[12px] font-semibold uppercase tracking-wide text-muted">Log</div>
