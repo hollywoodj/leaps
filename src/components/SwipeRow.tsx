@@ -34,13 +34,14 @@ export function SwipeRow({
   const [dx, setDx] = useState(0);
   const dragging = useRef(false);
   const axis = useRef<"h" | "v" | null>(null);
+  const openDelete = useRef(false);
 
   function reset() {
     tracking.current = false;
     pointerId.current = null;
     dragging.current = false;
     axis.current = null;
-    setDx(0);
+    if (!openDelete.current) setDx(0);
   }
 
   function isCurrentPointer(id: number) {
@@ -67,7 +68,13 @@ export function SwipeRow({
     const finalDy = e.clientY - startY.current;
     if (dragging.current) {
       if (deleteMode) {
-        if (finalDx < -72) onDelete?.();
+        if (finalDx < -48) {
+          openDelete.current = true;
+          setDx(-112);
+        } else {
+          openDelete.current = false;
+          setDx(0);
+        }
       } else if (yesSide === "right") {
         if (finalDx > 72) onYes?.();
         else if (finalDx < -72) onSkip?.();
@@ -76,7 +83,12 @@ export function SwipeRow({
         else if (finalDx > 72) onSkip?.();
       }
     } else if (Math.abs(finalDx) < 8 && Math.abs(finalDy) < 8) {
-      onTap?.();
+      if (openDelete.current) {
+        openDelete.current = false;
+        setDx(0);
+      } else {
+        onTap?.();
+      }
     }
     reset();
   }
@@ -92,12 +104,16 @@ export function SwipeRow({
         </div>
       )}
       {swipeOn && (
-        <div
+        <button
+          type="button"
           className="absolute inset-y-0 right-0 flex w-28 items-center justify-center text-[17px] font-semibold text-white"
           style={{ background: right.color }}
+          onClick={() => {
+            if (deleteMode) onDelete?.();
+          }}
         >
           {right.label}
-        </div>
+        </button>
       )}
       <div
         className="relative bg-white touch-pan-y"
