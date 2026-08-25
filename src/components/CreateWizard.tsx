@@ -132,7 +132,7 @@ export function CreateWizard() {
 
       {step === 1 && (
         <div className="pb-8">
-          <div className="ios-group">
+          <div className="ios-inset">
           <button
             type="button"
             onClick={() => setStep(2)}
@@ -145,7 +145,7 @@ export function CreateWizard() {
           {categories.map((group) => (
             <div key={group.category}>
               <h2 className="ios-section !pt-3">{group.category}</h2>
-              <div className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">
+              <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
                 {group.templates.map((template) => (
                   <button
                     key={template.id}
@@ -165,15 +165,17 @@ export function CreateWizard() {
       )}
 
       {step === 2 && (
-        <div>
-          <input
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="Tracker Name"
-            className="w-full border-b border-black/[0.08] px-4 py-4 text-[20px] font-semibold text-label outline-none placeholder:text-muted"
-          />
+        <div className="pb-8">
+          <div className="ios-inset">
+            <input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="Tracker Name"
+              className="w-full px-4 py-3.5 text-[20px] font-semibold text-label outline-none placeholder:text-muted"
+            />
+          </div>
           <p className="px-4 py-3 text-center text-[14px] text-muted">How do you want to track this?</p>
-          <div className="divide-y divide-black/[0.06]">
+          <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
             {TYPES.map((type) => {
               const info = typeCopy(type.id);
               const selected = form.type === type.id;
@@ -201,121 +203,123 @@ export function CreateWizard() {
               );
             })}
           </div>
-          <div className="mt-6 px-4 pb-8">
-            <div className="text-center text-[13px] font-bold uppercase tracking-wide text-navy">{copy.title}</div>
-            <div className="mt-1 text-center text-[13px] italic text-muted">{copy.examples}</div>
-            <div className="mt-4 rounded-xl border border-black/10 p-4">
-              <label className="text-[12px] font-semibold uppercase tracking-wide text-muted">Emoji</label>
+          <h2 className="ios-section">{copy.title}</h2>
+          <p className="px-8 pb-2 text-[13px] italic text-muted">{copy.examples}</p>
+          <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
+            <div className="px-4 py-3">
+              <label className="text-[13px] text-muted">Emoji</label>
               <div className="mt-2 flex flex-wrap gap-1">
                 {EMOJI_SET.map((emoji) => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => setForm({ ...form, emoji })}
-                    className={clsx("h-9 w-9 rounded-lg text-lg", form.emoji === emoji ? "bg-fill" : "bg-grouped")}
+                    className={clsx("h-9 w-9 rounded-lg text-lg press", form.emoji === emoji ? "bg-fill" : "bg-grouped")}
                   >
                     {emoji}
                   </button>
                 ))}
               </div>
-              <label className="mt-4 block text-[12px] font-semibold uppercase tracking-wide text-muted">Color</label>
+            </div>
+            <div className="px-4 py-3">
+              <label className="text-[13px] text-muted">Color</label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {TRACKER_COLORS.map((color) => (
                   <button
                     key={color}
                     type="button"
                     onClick={() => setForm({ ...form, color })}
-                    className={clsx("h-7 w-7 rounded-full", form.color === color && "ring-2 ring-offset-2 ring-ios")}
+                    className={clsx("h-7 w-7 rounded-full press", form.color === color && "ring-2 ring-offset-2 ring-ios")}
                     style={{ background: color }}
                   />
                 ))}
               </div>
-              {form.type === "habit" && (
-                <>
-                  <label className="mt-4 flex items-center justify-between text-[15px]">
-                    <span>Bad habit I want to limit</span>
-                    <IosSwitch
-                      checked={Boolean(form.isBad)}
-                      label="Bad habit"
-                      onChange={(checked) => setForm({ ...form, isBad: checked, goalValue: checked ? 0 : form.goalValue })}
-                    />
-                  </label>
-                  <label className="mt-3 block text-[12px] font-semibold uppercase tracking-wide text-muted">
-                    {form.isBad ? "Max allowed per period" : "Times per period"}
-                    <input
-                      type="number"
-                      value={form.isBad ? form.goalValue : form.timesPerPeriod}
-                      onChange={(e) =>
-                        setForm(
-                          form.isBad
-                            ? { ...form, goalValue: Number(e.target.value) }
-                            : { ...form, timesPerPeriod: Number(e.target.value) },
-                        )
-                      }
-                      className="field-ios mt-1 w-full text-left"
-                    />
-                  </label>
-                </>
-              )}
-              {(form.type === "target" || form.type === "average") && (
-                <label className="mt-3 block text-[12px] font-semibold uppercase tracking-wide text-muted">
-                  {form.type === "target" ? "Goal value" : "Target average"}
-                  <input
-                    type="number"
-                    value={form.goalValue}
-                    onChange={(e) => setForm({ ...form, goalValue: Number(e.target.value) })}
-                    className="field-ios mt-1 w-full text-left"
+            </div>
+            {form.type === "habit" && (
+              <>
+                <label className="flex items-center justify-between px-4 py-3 text-[15px]">
+                  <span>Bad habit I want to limit</span>
+                  <IosSwitch
+                    checked={Boolean(form.isBad)}
+                    label="Bad habit"
+                    onChange={(checked) => setForm({ ...form, isBad: checked, goalValue: checked ? 0 : form.goalValue })}
                   />
                 </label>
-              )}
-              {form.type === "project" && (
-                <div className="mt-3">
-                  <div className="text-[12px] font-semibold uppercase tracking-wide text-muted">Milestones</div>
-                  <div className="mt-2 flex gap-2">
-                    <input
-                      value={milestoneText}
-                      onChange={(e) => setMilestoneText(e.target.value)}
-                      className="field-ios flex-1 text-left"
-                      placeholder="Add a milestone"
-                    />
-                    <button
-                      type="button"
-                      className="rounded-lg bg-grouped px-3 text-sm font-semibold text-ios"
-                      onClick={() => {
-                        if (!milestoneText.trim()) return;
-                        setForm({ ...form, milestones: [...(form.milestones ?? []), { title: milestoneText.trim() }] });
-                        setMilestoneText("");
-                      }}
-                    >
-                      Add
-                    </button>
-                  </div>
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {form.milestones?.map((m, i) => (
-                      <li key={`${m.title}-${i}`} className="flex justify-between">
-                        {m.title}
-                        <button
-                          type="button"
-                          className="text-xs text-bad"
-                          onClick={() => setForm({ ...form, milestones: form.milestones?.filter((_, idx) => idx !== i) })}
-                        >
-                          Remove
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <label className="mt-3 block text-[12px] font-semibold uppercase tracking-wide text-muted">
-                Unit
+                <label className="flex items-center justify-between gap-3 px-4 py-3 text-[15px]">
+                  <span className="text-muted">{form.isBad ? "Max allowed" : "Times per period"}</span>
+                  <input
+                    type="number"
+                    value={form.isBad ? form.goalValue : form.timesPerPeriod}
+                    onChange={(e) =>
+                      setForm(
+                        form.isBad
+                          ? { ...form, goalValue: Number(e.target.value) }
+                          : { ...form, timesPerPeriod: Number(e.target.value) },
+                      )
+                    }
+                    className="field-ios"
+                  />
+                </label>
+              </>
+            )}
+            {(form.type === "target" || form.type === "average") && (
+              <label className="flex items-center justify-between gap-3 px-4 py-3 text-[15px]">
+                <span className="text-muted">{form.type === "target" ? "Goal value" : "Target average"}</span>
                 <input
-                  value={form.unit}
-                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                  className="field-ios mt-1 w-full text-left"
-                  placeholder="pages, miles, hours, $"
+                  type="number"
+                  value={form.goalValue}
+                  onChange={(e) => setForm({ ...form, goalValue: Number(e.target.value) })}
+                  className="field-ios"
                 />
               </label>
-            </div>
+            )}
+            {form.type === "project" && (
+              <div className="px-4 py-3">
+                <div className="text-[13px] text-muted">Milestones</div>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    value={milestoneText}
+                    onChange={(e) => setMilestoneText(e.target.value)}
+                    className="field-ios flex-1 text-left"
+                    placeholder="Add a milestone"
+                  />
+                  <button
+                    type="button"
+                    className="text-[15px] font-semibold text-ios press"
+                    onClick={() => {
+                      if (!milestoneText.trim()) return;
+                      setForm({ ...form, milestones: [...(form.milestones ?? []), { title: milestoneText.trim() }] });
+                      setMilestoneText("");
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
+                <ul className="mt-2 space-y-1 text-[15px]">
+                  {form.milestones?.map((m, i) => (
+                    <li key={`${m.title}-${i}`} className="flex justify-between">
+                      {m.title}
+                      <button
+                        type="button"
+                        className="text-[13px] text-bad press"
+                        onClick={() => setForm({ ...form, milestones: form.milestones?.filter((_, idx) => idx !== i) })}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <label className="flex items-center justify-between gap-3 px-4 py-3 text-[15px]">
+              <span className="text-muted">Unit</span>
+              <input
+                value={form.unit}
+                onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                className="field-ios"
+                placeholder="pages, miles, hours, $"
+              />
+            </label>
           </div>
         </div>
       )}
@@ -323,7 +327,7 @@ export function CreateWizard() {
       {step === 3 && (
         <div className="bg-grouped pb-10">
           <h2 className="ios-section">Repeat</h2>
-          <div className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">
+          <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
           <label className="flex items-center justify-between px-4 py-3 text-[15px]">
             <span className="text-muted">Repeat</span>
             <select
@@ -379,7 +383,7 @@ export function CreateWizard() {
           )}
           </div>
           <h2 className="ios-section">Notes</h2>
-          <div className="ios-group px-4 py-3">
+          <div className="ios-inset px-4 py-3">
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}

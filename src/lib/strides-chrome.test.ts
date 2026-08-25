@@ -69,15 +69,33 @@ describe("Strides chrome copy", () => {
     expect(dates).not.toContain("selected || isToday");
   });
 
-  it("uses a log sheet grabber, iOS FAB, medal rankings, and S M T W T F S calendar", () => {
+  it("lets you swipe the whole Daily Goals row and tap to open", () => {
+    expect(swipe).toContain("onTap");
+    expect(swipe).not.toContain("closest(\"a, button");
+    expect(card).toContain("onTap={openDetail}");
+    expect(card).not.toContain("from \"next/link\"");
+  });
+
+  it("matches remaining Strides chrome: keypad, inset lists, title chevron, tag dots, history swipe-delete", () => {
+    expect(log).toContain('const KEYS = ["1", "2", "3"');
+    expect(log).toContain("⌫");
     expect(log).toContain("IosGrabber");
-    expect(log).toContain("text-[34px]");
+    expect(css).toContain(".ios-inset");
+    expect(css).toContain(".title-chevron");
+    expect(css).toContain(".check-inset");
+    expect(css).toContain("padding-bottom: 2.5rem");
+    expect(nav).toContain("title-chevron");
+    expect(shell).toContain("ListTodo");
+    expect(card).toContain("tag.color");
+    expect(detail).toContain("onDelete");
+    expect(detail).toContain("ChevronRight");
     expect(detail).toContain("bg-ios");
-    expect(detail).toContain('bottom: "calc(1.5rem + env(safe-area-inset-bottom))"');
+    expect(create).toContain("ios-inset");
+    expect(settings).toContain("ios-inset");
+    expect(settings).toContain("Keep making strides.");
+    expect(reports).toContain("frequencyLabel(row.tracker)");
     expect(reports).toContain("text-[#f5c518]");
     expect(cal).toContain('const DOW = ["S", "M", "T", "W", "T", "F", "S"]');
     expect(perfect).toContain("Perfect Day!");
-    expect(perfect).toContain("Celebrate Your Wins");
-    expect(settings).toContain("Keep making strides.");
   });
 });

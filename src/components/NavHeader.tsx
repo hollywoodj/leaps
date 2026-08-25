@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { Check, ChevronDown, ChevronLeft } from "lucide-react";
+import { Check, ChevronLeft } from "lucide-react";
 import { useState } from "react";
 
 export function NavHeader({
@@ -33,9 +33,9 @@ export function NavHeader({
         <div className="absolute left-0 z-10 flex items-center">{left}</div>
         <div className="mx-auto flex min-w-0 max-w-[calc(100%-7.5rem)] flex-col items-center text-center">
           {menu ? (
-            <button type="button" onClick={() => setOpen((v) => !v)} className="flex max-w-full items-center gap-0.5 press">
+            <button type="button" onClick={() => setOpen((v) => !v)} className="flex max-w-full items-center gap-1 press">
               <span className="truncate text-[17px] font-semibold tracking-tight">{title}</span>
-              <ChevronDown size={13} strokeWidth={3} className="shrink-0 opacity-90" />
+              <span className="title-chevron" aria-hidden />
             </button>
           ) : (
             <div className="max-w-full truncate text-[17px] font-semibold tracking-tight">{title}</div>

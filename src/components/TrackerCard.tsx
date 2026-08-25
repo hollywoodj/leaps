@@ -6,7 +6,7 @@ import { frequencyLabel, reportMetrics } from "@/lib/labels";
 import type { TodayItem } from "@/lib/types";
 import clsx from "clsx";
 import { Check, Minus, Plus } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export function TrackerCard({
   item,
@@ -29,19 +29,28 @@ export function TrackerCard({
   variant?: "today" | "reports";
   busy?: boolean;
 }) {
-  const { tracker, progress, section } = item;
+  const router = useRouter();
+  const { tracker, progress, section, tags } = item;
   const metrics = reportMetrics(tracker, progress);
   const skipped = section === "done" && item.todayLogs.some((l) => l.status === "skip");
   const swipeable =
     variant === "today" && (section === "due" || section === "missed") && tracker.type === "habit" && !busy;
+  const tag = tags[0];
+
+  function openDetail() {
+    router.push(`/trackers/${tracker.id}`);
+  }
 
   const row = (
-    <article className={clsx("bg-white px-4 py-[11px]", busy && "pointer-events-none opacity-60")}>
+    <article className={clsx("bg-white px-4 py-2.5", busy && "pointer-events-none opacity-60")}>
       <div className="flex items-center gap-3">
         {variant === "today" && <CheckButton item={item} onYes={onYes} onUndo={onUndo} onLog={onLog} />}
-        <Link href={`/trackers/${tracker.id}`} className="min-w-0 flex-1 press">
-          <div className="flex items-baseline justify-between gap-3">
-            <h3 className="truncate text-[17px] font-semibold text-navy">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="line-clamp-2 text-[17px] font-semibold leading-5 text-navy">
+              {tag && (
+                <span className="mr-1.5 inline-block h-[7px] w-[7px] translate-y-[-1px] rounded-full" style={{ background: tag.color }} />
+              )}
               {tracker.title} <span className="text-[15px] font-normal">{tracker.emoji}</span>
             </h3>
             <div className="shrink-0 text-right">
@@ -56,11 +65,11 @@ export function TrackerCard({
               <div className="mt-0.5 text-[11px] text-muted">{metrics.secondary}</div>
             </div>
           </div>
-          <div className="mt-[7px]">
+          <div className="mt-1.5">
             <ProgressBar percent={progress.percent} pacePercent={progress.pacePercent} onTrack={progress.onTrack} />
           </div>
-          <p className="mt-1.5 text-[12px] text-muted">{skipped ? "Skipped" : frequencyLabel(tracker)}</p>
-        </Link>
+          <p className="mt-1 text-[12px] text-muted">{skipped ? "Skipped" : frequencyLabel(tracker)}</p>
+        </div>
       </div>
       {tracker.type === "project" && item.milestones.length > 0 && variant === "today" && (
         <ul className="mt-1.5 space-y-0.5 pl-[48px]">
@@ -91,6 +100,7 @@ export function TrackerCard({
   return (
     <SwipeRow
       enabled={swipeable}
+      onTap={openDetail}
       onYes={tracker.isBad ? onDid ?? onYes : onYes}
       onSkip={onSkip}
       yesLabel="Yes"

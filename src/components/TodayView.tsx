@@ -363,7 +363,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
         <h2 className="text-[13px] font-normal uppercase tracking-[0.04em] text-muted">{title}</h2>
         <span className="text-[13px] font-medium text-muted">{count}</span>
       </div>
-      <div className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">{children}</div>
+      <div className="ios-group check-inset">{children}</div>
     </section>
   );
 }

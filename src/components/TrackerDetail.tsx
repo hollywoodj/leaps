@@ -6,6 +6,7 @@ import { IosSpinner, IosSwitch } from "@/components/ios";
 import { LogValueModal } from "@/components/LogValueModal";
 import { BackButton, HeaderButton, NavHeader } from "@/components/NavHeader";
 import { ProgressBar } from "@/components/ProgressBar";
+import { SwipeRow } from "@/components/SwipeRow";
 import { api } from "@/lib/client";
 import { TRACKER_COLORS } from "@/lib/colors";
 import { addDays, formatPretty, formatShort, startOfWeek, todayISO } from "@/lib/dates";
@@ -13,7 +14,7 @@ import { frequencyLabel } from "@/lib/labels";
 import { formatAmount, formatNumber } from "@/lib/stats";
 import type { RepeatKind, Tag, TrackerDetail as Detail, TrackerType } from "@/lib/types";
 import clsx from "clsx";
-import { Check, Plus, Share } from "lucide-react";
+import { Check, ChevronRight, Plus, Share } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -283,28 +284,27 @@ function ChartsPane({
 function HistoryPane({ data, onDeleted }: { data: Detail; onDeleted: () => Promise<void> }) {
   const { tracker } = data;
   return (
-    <div className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">
+    <div className="ios-inset">
       {data.logs.length === 0 && <p className="px-4 py-8 text-center text-[15px] text-muted">No logs yet.</p>}
       {data.logs.map((entry) => (
-        <div key={entry.id} className="flex items-center justify-between gap-3 px-4 py-3">
-          <div>
-            <div className="text-[15px] font-semibold">{formatPretty(entry.date, { month: "short", day: "numeric", year: "numeric" })}</div>
-            <div className="text-[13px] text-muted">
-              {entry.status === "skip" ? "Skipped" : entry.status === "yes" ? "Yes" : entry.status === "no" ? "No" : formatAmount(entry.value, tracker.unit)}
-              {entry.note ? ` · ${entry.note}` : ""}
+        <SwipeRow
+          key={entry.id}
+          enabled={false}
+          onDelete={async () => {
+            await api(`/api/logs/${entry.id}`, { method: "DELETE" });
+            await onDeleted();
+          }}
+        >
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <div>
+              <div className="text-[15px] font-semibold">{formatPretty(entry.date, { month: "short", day: "numeric", year: "numeric" })}</div>
+              <div className="text-[13px] text-muted">
+                {entry.status === "skip" ? "Skipped" : entry.status === "yes" ? "Yes" : entry.status === "no" ? "No" : formatAmount(entry.value, tracker.unit)}
+                {entry.note ? ` · ${entry.note}` : ""}
+              </div>
             </div>
           </div>
-          <button
-            type="button"
-            className="text-[15px] font-semibold text-bad press"
-            onClick={async () => {
-              await api(`/api/logs/${entry.id}`, { method: "DELETE" });
-              await onDeleted();
-            }}
-          >
-            Delete
-          </button>
-        </div>
+        </SwipeRow>
       ))}
     </div>
   );
@@ -315,7 +315,7 @@ function NotesPane({ data, onSaved }: { data: Detail; onSaved: () => Promise<voi
   const [saving, setSaving] = useState(false);
   return (
     <div className="bg-grouped px-0 py-4">
-      <div className="ios-group px-4 py-3">
+      <div className="ios-inset px-4 py-3">
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -399,7 +399,7 @@ function SettingsForm({
   }
 
   return (
-    <div className="space-y-6 bg-grouped pb-8">
+    <div className="space-y-6 bg-grouped pb-8 pt-4">
       <Group>
         <Field label="Title">
           <input value={title} onChange={(e) => setTitle(e.target.value)} className="field-ios" />
@@ -527,14 +527,17 @@ function SettingsForm({
 }
 
 function Group({ children }: { children: React.ReactNode }) {
-  return <div className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">{children}</div>;
+  return <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">{children}</div>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex items-center justify-between gap-3 px-4 py-3 text-[15px]">
       <span className="shrink-0 text-muted">{label}</span>
-      <div className="min-w-0 flex-1 text-right">{children}</div>
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
+        {children}
+        <ChevronRight size={16} className="shrink-0 text-[#c7c7cc]" />
+      </div>
     </label>
   );
 }

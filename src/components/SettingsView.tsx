@@ -39,7 +39,7 @@ export function SettingsView() {
       </p>
 
       <h2 className="ios-section">Tags</h2>
-      <div className="ios-group">
+      <div className="ios-inset">
         <form
           className="flex gap-2 px-4 py-3"
           onSubmit={async (e) => {
@@ -76,7 +76,7 @@ export function SettingsView() {
 
       <h2 className="ios-section">Reorder trackers</h2>
       {live.length ? (
-        <ul className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">
+        <ul className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
           {live.map((tracker, index, list) => (
             <li key={tracker.id} className="flex items-center justify-between px-4 py-3">
               <span className="text-[17px]">
@@ -116,11 +116,11 @@ export function SettingsView() {
           ))}
         </ul>
       ) : (
-        <p className="ios-group px-4 py-3 text-[15px] text-muted">No trackers yet.</p>
+        <p className="ios-inset px-4 py-3 text-[15px] text-muted">No trackers yet.</p>
       )}
 
       <h2 className="ios-section">Data</h2>
-      <div className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">
+      <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
         <button
           type="button"
           className="w-full px-4 py-3 text-left text-[17px] text-ios press"

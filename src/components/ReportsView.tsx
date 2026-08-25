@@ -195,16 +195,22 @@ export function ReportsView() {
             const metrics = reportMetrics(row.tracker, row.progress);
             return (
               <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="block px-4 py-3 press">
-                <div className="flex items-baseline justify-between gap-3">
-                  <div className="truncate text-[17px] font-semibold text-navy">
-                    {row.tracker.title} <span className="text-[15px] font-normal">{row.tracker.emoji}</span>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="line-clamp-2 text-[17px] font-semibold leading-5 text-navy">
+                      {row.tags[0] && (
+                        <span className="mr-1.5 inline-block h-[7px] w-[7px] translate-y-[-1px] rounded-full" style={{ background: row.tags[0].color }} />
+                      )}
+                      {row.tracker.title} <span className="text-[15px] font-normal">{row.tracker.emoji}</span>
+                    </div>
+                    <div className="mt-0.5 text-[12px] text-muted">{frequencyLabel(row.tracker)}</div>
                   </div>
                   <div className="shrink-0 text-right">
                     <div className="text-[20px] font-semibold leading-none">{metrics.primary}</div>
                     <div className="mt-0.5 text-[11px] text-muted">{metrics.secondary}</div>
                   </div>
                 </div>
-                <div className="mt-[7px]">
+                <div className="mt-1.5">
                   <ProgressBar percent={row.progress.percent} pacePercent={row.progress.pacePercent} onTrack={row.progress.onTrack} />
                 </div>
               </Link>
@@ -219,6 +225,9 @@ export function ReportsView() {
             <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="flex items-center justify-between px-4 py-3 press">
               <div>
                 <div className="text-[17px] font-semibold text-navy">
+                  {row.tags[0] && (
+                    <span className="mr-1.5 inline-block h-[7px] w-[7px] translate-y-[-1px] rounded-full" style={{ background: row.tags[0].color }} />
+                  )}
                   {row.tracker.title} <span className="text-[15px] font-normal">{row.tracker.emoji}</span>
                 </div>
                 <div className="text-[12px] text-muted">{frequencyLabel(row.tracker)}</div>
@@ -256,6 +265,9 @@ export function ReportsView() {
                 </span>
                 <div className="flex-1">
                   <div className="text-[17px] font-semibold text-navy">
+                    {row.tags[0] && (
+                      <span className="mr-1.5 inline-block h-[7px] w-[7px] translate-y-[-1px] rounded-full" style={{ background: row.tags[0].color }} />
+                    )}
                     {row.tracker.title} <span className="text-[15px] font-normal">{row.tracker.emoji}</span>
                   </div>
                   <div className="text-[12px] text-muted">

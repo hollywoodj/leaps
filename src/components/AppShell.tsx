@@ -2,7 +2,7 @@
 
 import { ElectronMenu } from "@/components/ElectronMenu";
 import clsx from "clsx";
-import { BarChart3, Plus, SquareCheck } from "lucide-react";
+import { BarChart3, ListTodo, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -37,7 +37,7 @@ function TabBar({ pathname }: { pathname: string }) {
             todayActive ? "text-ios" : "text-muted",
           )}
         >
-          <SquareCheck size={24} strokeWidth={todayActive ? 2.4 : 1.85} />
+          <ListTodo size={25} strokeWidth={todayActive ? 2.35 : 1.85} />
           <span className="text-[10px] font-medium leading-tight">Daily Goals</span>
         </Link>
         <Link

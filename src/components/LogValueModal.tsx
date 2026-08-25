@@ -1,8 +1,10 @@
 "use client";
 
-import { Check, Minus, Plus, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { IosGrabber } from "@/components/ios";
 import { useEffect, useState } from "react";
+
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "del"] as const;
 
 export function LogValueModal({
   open,
@@ -34,8 +36,21 @@ export function LogValueModal({
 
   if (!open) return null;
 
+  function typeKey(key: (typeof KEYS)[number]) {
+    if (key === "del") {
+      setValue((curr) => curr.slice(0, -1));
+      return;
+    }
+    if (key === "." && value.includes(".")) return;
+    setValue((curr) => {
+      if (key === "." && !curr) return "0.";
+      if (curr === "0" && key !== ".") return key;
+      return `${curr}${key}`;
+    });
+  }
+
   async function submit() {
-    const parsed = Number(value);
+    const parsed = Number(value || 0);
     if (Number.isNaN(parsed)) return;
     setSaving(true);
     try {
@@ -53,7 +68,7 @@ export function LogValueModal({
         onClick={(e) => e.stopPropagation()}
       >
         <IosGrabber />
-        <div className="mb-3 flex items-start justify-between">
+        <div className="mb-2 flex items-start justify-between">
           <div>
             <div className="text-[12px] font-semibold uppercase tracking-wide text-muted">Log</div>
             <h2 className="text-[22px] font-semibold text-label">{title}</h2>
@@ -62,41 +77,20 @@ export function LogValueModal({
             <X size={20} />
           </button>
         </div>
-        <label className="text-[13px] text-muted">{unit || "Value"}</label>
-        <div className="mt-1.5 flex items-center gap-3">
-          <button
-            type="button"
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-grouped text-ios press"
-            onClick={() => setValue(String(Math.max(0, (Number(value) || 0) - 1)))}
-            aria-label="Decrease"
-          >
-            <Minus size={18} />
-          </button>
-          <input
-            autoFocus
-            inputMode="decimal"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="h-14 flex-1 rounded-[12px] bg-grouped px-3 text-center text-[34px] font-semibold leading-none text-label outline-none"
-          />
-          <button
-            type="button"
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-grouped text-ios press"
-            onClick={() => setValue(String((Number(value) || 0) + 1))}
-            aria-label="Increase"
-          >
-            <Plus size={18} />
-          </button>
+        <div className="text-center text-[13px] text-muted">{unit || "Value"}</div>
+        <div className="mb-2 text-center text-[44px] font-semibold leading-none tracking-tight text-label">
+          {value || "0"}
         </div>
-        <div className="mt-2.5 flex gap-2">
-          {[1, 5, 10].map((n) => (
+        <div className="grid grid-cols-3 gap-1.5">
+          {KEYS.map((key) => (
             <button
-              key={n}
+              key={key}
               type="button"
-              onClick={() => setValue(String((Number(value) || 0) + n))}
-              className="rounded-full bg-grouped px-3.5 py-1.5 text-[13px] font-semibold text-ios press"
+              aria-label={key === "del" ? "Delete" : key}
+              onClick={() => typeKey(key)}
+              className="flex h-12 items-center justify-center rounded-[10px] bg-grouped text-[22px] font-medium text-label press"
             >
-              +{n}
+              {key === "del" ? "⌫" : key}
             </button>
           ))}
         </div>
@@ -104,13 +98,13 @@ export function LogValueModal({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Note (optional)"
-          className="mt-4 h-[76px] w-full resize-none rounded-[12px] bg-grouped px-3 py-2.5 text-[15px] outline-none"
+          className="mt-3 h-[64px] w-full resize-none rounded-[12px] bg-grouped px-3 py-2.5 text-[15px] outline-none"
         />
         <button
           type="button"
           disabled={saving}
           onClick={() => void submit()}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-[12px] bg-ios py-3.5 text-[17px] font-semibold text-white press disabled:opacity-60"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-[12px] bg-ios py-3.5 text-[17px] font-semibold text-white press disabled:opacity-60"
         >
           <Check size={18} strokeWidth={2.6} />
           Save
