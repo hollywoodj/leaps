@@ -2,8 +2,9 @@
 
 import { CalendarHeatmap } from "@/components/CalendarHeatmap";
 import { CompareBars, DailyBars, LineChart, RingStat } from "@/components/Charts";
+import { IosSpinner, IosSwitch } from "@/components/ios";
 import { LogValueModal } from "@/components/LogValueModal";
-import { HeaderButton, NavHeader } from "@/components/NavHeader";
+import { BackButton, HeaderButton, NavHeader } from "@/components/NavHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { api } from "@/lib/client";
 import { TRACKER_COLORS } from "@/lib/colors";
@@ -12,7 +13,7 @@ import { frequencyLabel } from "@/lib/labels";
 import { formatAmount, formatNumber } from "@/lib/stats";
 import type { RepeatKind, Tag, TrackerDetail as Detail, TrackerType } from "@/lib/types";
 import clsx from "clsx";
-import { Check, ChevronLeft, Share } from "lucide-react";
+import { Check, Plus, Share } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -57,14 +58,7 @@ export function TrackerDetail() {
   if (error) {
     return (
       <div>
-        <NavHeader
-          title="Tracker"
-          left={
-            <HeaderButton href="/" label="Back">
-              <ChevronLeft size={26} />
-            </HeaderButton>
-          }
-        />
+        <NavHeader title="Tracker" left={<BackButton href="/" label="Daily Goals" />} />
         <p className="px-4 py-6 text-sm text-bad">{error}</p>
       </div>
     );
@@ -73,15 +67,8 @@ export function TrackerDetail() {
   if (!data) {
     return (
       <div>
-        <NavHeader
-          title="Tracker"
-          left={
-            <HeaderButton href="/" label="Back">
-              <ChevronLeft size={26} />
-            </HeaderButton>
-          }
-        />
-        <p className="px-4 py-8 text-center text-sm text-muted">Loading tracker…</p>
+        <NavHeader title="Tracker" left={<BackButton href="/" label="Daily Goals" />} />
+        <IosSpinner label="Loading tracker" />
       </div>
     );
   }
@@ -94,11 +81,7 @@ export function TrackerDetail() {
       <NavHeader
         title={`${tracker.title} ${tracker.emoji}`}
         subtitle={frequencyLabel(tracker)}
-        left={
-          <HeaderButton href="/" label="Back">
-            <ChevronLeft size={26} />
-          </HeaderButton>
-        }
+        left={<BackButton href="/" label="Daily Goals" />}
         right={
           <HeaderButton
             label="Share"
@@ -130,11 +113,11 @@ export function TrackerDetail() {
         <button
           type="button"
           onClick={() => setLogOpen(true)}
-          className="fixed z-30 flex h-14 w-14 items-center justify-center rounded-full bg-navy text-2xl text-white shadow-card"
-          style={{ bottom: "calc(6rem + env(safe-area-inset-bottom))", right: "1.25rem" }}
+          className="fixed z-30 flex h-14 w-14 items-center justify-center rounded-full bg-ios text-white shadow-[0_8px_20px_rgba(0,122,255,0.38)] press"
+          style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom))", right: "1.25rem" }}
           aria-label="Log"
         >
-          +
+          <Plus size={28} strokeWidth={2.4} />
         </button>
       )}
 
@@ -300,20 +283,20 @@ function ChartsPane({
 function HistoryPane({ data, onDeleted }: { data: Detail; onDeleted: () => Promise<void> }) {
   const { tracker } = data;
   return (
-    <div className="divide-y divide-black/[0.06] bg-white">
-      {data.logs.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted">No logs yet.</p>}
+    <div className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">
+      {data.logs.length === 0 && <p className="px-4 py-8 text-center text-[15px] text-muted">No logs yet.</p>}
       {data.logs.map((entry) => (
         <div key={entry.id} className="flex items-center justify-between gap-3 px-4 py-3">
           <div>
             <div className="text-[15px] font-semibold">{formatPretty(entry.date, { month: "short", day: "numeric", year: "numeric" })}</div>
-            <div className="text-[12px] text-muted">
+            <div className="text-[13px] text-muted">
               {entry.status === "skip" ? "Skipped" : entry.status === "yes" ? "Yes" : entry.status === "no" ? "No" : formatAmount(entry.value, tracker.unit)}
               {entry.note ? ` · ${entry.note}` : ""}
             </div>
           </div>
           <button
             type="button"
-            className="text-[13px] font-semibold text-bad"
+            className="text-[15px] font-semibold text-bad press"
             onClick={async () => {
               await api(`/api/logs/${entry.id}`, { method: "DELETE" });
               await onDeleted();
@@ -331,29 +314,33 @@ function NotesPane({ data, onSaved }: { data: Detail; onSaved: () => Promise<voi
   const [notes, setNotes] = useState(data.tracker.notes);
   const [saving, setSaving] = useState(false);
   return (
-    <div className="bg-white px-4 py-4">
-      <textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="Add a note about this goal…"
-        className="h-48 w-full resize-none rounded-xl bg-grouped px-3 py-3 text-[15px] outline-none"
-      />
-      <button
-        type="button"
-        disabled={saving}
-        className="mt-3 w-full rounded-xl bg-ios py-3 text-[16px] font-semibold text-white"
-        onClick={async () => {
-          setSaving(true);
-          try {
-            await api(`/api/trackers/${data.tracker.id}`, { method: "PATCH", body: JSON.stringify({ notes }) });
-            await onSaved();
-          } finally {
-            setSaving(false);
-          }
-        }}
-      >
-        Save note
-      </button>
+    <div className="bg-grouped px-0 py-4">
+      <div className="ios-group px-4 py-3">
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Add a note about this goal…"
+          className="h-52 w-full resize-none bg-transparent text-[17px] leading-6 outline-none"
+        />
+      </div>
+      <div className="px-4">
+        <button
+          type="button"
+          disabled={saving}
+          className="mt-4 w-full rounded-[12px] bg-ios py-3.5 text-[17px] font-semibold text-white press"
+          onClick={async () => {
+            setSaving(true);
+            try {
+              await api(`/api/trackers/${data.tracker.id}`, { method: "PATCH", body: JSON.stringify({ notes }) });
+              await onSaved();
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          Save note
+        </button>
+      </div>
     </div>
   );
 }
@@ -447,7 +434,7 @@ function SettingsForm({
           />
         </Field>
         <Field label="Repeat">
-          <select value={repeatKind} onChange={(e) => setRepeatKind(e.target.value as RepeatKind)} className="field-ios">
+          <select value={repeatKind} onChange={(e) => setRepeatKind(e.target.value as RepeatKind)} className="field-ios text-ios">
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
@@ -460,7 +447,7 @@ function SettingsForm({
                 key={d.n}
                 type="button"
                 onClick={() => setWeekdays((curr) => (curr.includes(d.n) ? curr.filter((x) => x !== d.n) : [...curr, d.n]))}
-                className={clsx("h-9 w-9 rounded-full text-xs font-bold", weekdays.includes(d.n) ? "bg-ios text-white" : "bg-grouped")}
+                className={clsx("h-9 w-9 rounded-full text-[13px] font-bold press", weekdays.includes(d.n) ? "bg-ios text-white" : "bg-grouped")}
               >
                 {d.l}
               </button>
@@ -468,15 +455,15 @@ function SettingsForm({
           </div>
         )}
         <Field label="Start">
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field-ios" />
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field-ios text-ios" />
         </Field>
         <Field label="Deadline">
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="field-ios" />
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="field-ios text-ios" />
         </Field>
         {t.type === "habit" && (
           <label className="flex items-center justify-between px-4 py-3 text-[15px]">
             Bad habit
-            <input type="checkbox" checked={isBad} onChange={(e) => setIsBad(e.target.checked)} />
+            <IosSwitch checked={isBad} label="Bad habit" onChange={setIsBad} />
           </label>
         )}
       </Group>
@@ -498,14 +485,14 @@ function SettingsForm({
         </Group>
       )}
       <div className="px-4">
-        <button type="button" disabled={saving} onClick={() => void save()} className="w-full rounded-xl bg-ios py-3 text-[16px] font-semibold text-white">
+        <button type="button" disabled={saving} onClick={() => void save()} className="w-full rounded-[12px] bg-ios py-3.5 text-[17px] font-semibold text-white press">
           Save
         </button>
       </div>
       <Group>
         <button
           type="button"
-          className="w-full px-4 py-3 text-left text-[15px] text-navy"
+          className="w-full px-4 py-3 text-left text-[17px] text-ios press"
           onClick={async () => {
             await api(`/api/trackers/${t.id}`, { method: "PATCH", body: JSON.stringify({ archived: !t.archived }) });
             await onSaved();
@@ -515,7 +502,7 @@ function SettingsForm({
         </button>
         <button
           type="button"
-          className="w-full px-4 py-3 text-left text-[15px] text-navy"
+          className="w-full px-4 py-3 text-left text-[17px] text-ios press"
           onClick={async () => {
             await api(`/api/trackers/${t.id}/start-over`, { method: "POST" });
             await onSaved();
@@ -525,7 +512,7 @@ function SettingsForm({
         </button>
         <button
           type="button"
-          className="w-full px-4 py-3 text-left text-[15px] text-bad"
+          className="w-full px-4 py-3 text-left text-[17px] text-bad press"
           onClick={async () => {
             if (!confirm("Delete this tracker and its logs?")) return;
             await api(`/api/trackers/${t.id}`, { method: "DELETE" });
@@ -540,7 +527,7 @@ function SettingsForm({
 }
 
 function Group({ children }: { children: React.ReactNode }) {
-  return <div className="divide-y divide-black/[0.06] border-y border-black/[0.06] bg-white">{children}</div>;
+  return <div className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">{children}</div>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

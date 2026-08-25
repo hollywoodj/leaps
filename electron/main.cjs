@@ -97,7 +97,7 @@ function buildMenu() {
     {
       label: "View",
       submenu: [
-        { label: "Today", accelerator: "CommandOrControl+1", click: () => send({ type: "today" }) },
+        { label: "Daily Goals", accelerator: "CommandOrControl+1", click: () => send({ type: "today" }) },
         { label: "Reports", accelerator: "CommandOrControl+2", click: () => send({ type: "reports" }) },
         { type: "separator" },
         { role: "reload" },

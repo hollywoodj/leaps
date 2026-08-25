@@ -7,11 +7,21 @@ export function SwipeRow({
   enabled,
   onYes,
   onSkip,
+  yesLabel = "Yes",
+  skipLabel = "Skip",
+  yesColor = "#34c759",
+  skipColor = "#8e8e93",
+  yesSide = "right",
 }: {
   children: React.ReactNode;
   enabled: boolean;
   onYes: () => void;
   onSkip: () => void;
+  yesLabel?: string;
+  skipLabel?: string;
+  yesColor?: string;
+  skipColor?: string;
+  yesSide?: "left" | "right";
 }) {
   const startX = useRef(0);
   const startY = useRef(0);
@@ -35,13 +45,22 @@ export function SwipeRow({
     return tracking.current && pointerId.current === id;
   }
 
+  const right = yesSide === "right" ? { label: yesLabel, color: yesColor } : { label: skipLabel, color: skipColor };
+  const left = yesSide === "left" ? { label: yesLabel, color: yesColor } : { label: skipLabel, color: skipColor };
+
   return (
     <div className="relative overflow-hidden bg-white">
-      <div className="absolute inset-y-0 left-0 flex w-24 items-center justify-center bg-good text-sm font-semibold text-white">
-        Yes
+      <div
+        className="absolute inset-y-0 left-0 flex w-28 items-center justify-center text-[17px] font-semibold text-white"
+        style={{ background: left.color }}
+      >
+        {left.label}
       </div>
-      <div className="absolute inset-y-0 right-0 flex w-24 items-center justify-center bg-[#8e8e93] text-sm font-semibold text-white">
-        Skip
+      <div
+        className="absolute inset-y-0 right-0 flex w-28 items-center justify-center text-[17px] font-semibold text-white"
+        style={{ background: right.color }}
+      >
+        {right.label}
       </div>
       <div
         className="relative bg-white touch-pan-y"
@@ -74,8 +93,13 @@ export function SwipeRow({
           if (!isCurrentPointer(e.pointerId)) return;
           const finalDx = e.clientX - startX.current;
           if (dragging.current) {
-            if (finalDx > 72) onYes();
-            else if (finalDx < -72) onSkip();
+            if (yesSide === "right") {
+              if (finalDx > 72) onYes();
+              else if (finalDx < -72) onSkip();
+            } else {
+              if (finalDx < -72) onYes();
+              else if (finalDx > 72) onSkip();
+            }
           }
           reset();
         }}
