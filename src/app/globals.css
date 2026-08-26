@@ -297,13 +297,13 @@ input[type="date"].field-ios::-webkit-calendar-picker-indicator {
 
 .filter-dot {
   position: absolute;
-  top: -1px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
+  top: -2px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
   background: #ff3b30;
-  box-shadow: 0 0 0 1.5px #1b57b5;
+  box-shadow: 0 0 0 1.5px #ffffff;
 }
 
 .cal-today {
