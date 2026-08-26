@@ -14,6 +14,7 @@ export function NavHeader({
   tabs,
   activeTab,
   onTab,
+  dots,
   children,
 }: {
   title: string;
@@ -24,12 +25,13 @@ export function NavHeader({
   tabs?: string[];
   activeTab?: string;
   onTab?: (tab: string) => void;
+  dots?: { current: number; total: number };
   children?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <header className="navy-bar sticky top-0 z-30 pt-[env(safe-area-inset-top)]">
-      <div className="relative flex h-11 items-center px-1">
+      <div className={clsx("relative flex items-center px-1", dots ? "min-h-11 py-1.5" : "h-11")}>
         <div className="absolute left-0 z-10 flex items-center">{left}</div>
         <div className="mx-auto flex min-w-0 max-w-[calc(100%-7.5rem)] flex-col items-center text-center">
           {menu ? (
@@ -41,6 +43,16 @@ export function NavHeader({
             <div className="max-w-full truncate text-[17px] font-semibold tracking-tight">{title}</div>
           )}
           {subtitle && <div className="max-w-full truncate text-[11px] font-medium text-white/80">{subtitle}</div>}
+          {dots && (
+            <div className="mt-1 flex items-center gap-1.5" aria-hidden>
+              {Array.from({ length: dots.total }, (_, i) => (
+                <span
+                  key={i}
+                  className={clsx("h-1.5 w-1.5 rounded-full", i + 1 === dots.current ? "bg-white" : "bg-white/35")}
+                />
+              ))}
+            </div>
+          )}
         </div>
         <div className="absolute right-0 z-10 flex items-center">{right}</div>
         {open && menu && (

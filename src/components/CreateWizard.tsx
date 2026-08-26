@@ -8,7 +8,7 @@ import { addDays, todayISO } from "@/lib/dates";
 import { typeCopy } from "@/lib/labels";
 import type { RepeatKind, Template, TrackerInput, TrackerType } from "@/lib/types";
 import clsx from "clsx";
-import { BarChart3, Check, ChevronRight, SlidersHorizontal, SquareCheck, TrendingUp } from "lucide-react";
+import { BarChart3, Check, ChevronRight, Search, SlidersHorizontal, SquareCheck, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -55,6 +55,7 @@ export function CreateWizard() {
   const [milestoneText, setMilestoneText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     void api<{ categories: Category[] }>("/api/templates").then((payload) => setCategories(payload.categories));
@@ -107,6 +108,7 @@ export function CreateWizard() {
       <NavHeader
         title="Add Tracker"
         subtitle={`Step ${step} of 3`}
+        dots={{ current: step, total: 3 }}
         left={
           step === 1 ? (
             <BackButton href="/" label="Daily Goals" />
@@ -132,6 +134,18 @@ export function CreateWizard() {
 
       {step === 1 && (
         <div className="pb-8">
+          <label className="ios-search">
+            <Search size={16} className="shrink-0 text-muted" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search"
+              className="w-full bg-transparent text-[17px] outline-none placeholder:text-muted"
+              type="search"
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+          </label>
           <div className="ios-inset">
           <button
             type="button"
@@ -142,11 +156,22 @@ export function CreateWizard() {
             <ChevronRight size={18} className="text-muted" />
           </button>
           </div>
-          {categories.map((group) => (
+          {categories.map((group) => {
+            const q = query.trim().toLowerCase();
+            const templates = q
+              ? group.templates.filter(
+                  (t) =>
+                    t.title.toLowerCase().includes(q) ||
+                    t.type.toLowerCase().includes(q) ||
+                    group.category.toLowerCase().includes(q),
+                )
+              : group.templates;
+            if (!templates.length) return null;
+            return (
             <div key={group.category}>
               <h2 className="ios-section !pt-3">{group.category}</h2>
               <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
-                {group.templates.map((template) => (
+                {templates.map((template) => (
                   <button
                     key={template.id}
                     type="button"
@@ -160,7 +185,8 @@ export function CreateWizard() {
                 ))}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

@@ -98,4 +98,29 @@ describe("Strides chrome copy", () => {
     expect(cal).toContain('const DOW = ["S", "M", "T", "W", "T", "F", "S"]');
     expect(perfect).toContain("Perfect Day!");
   });
+
+  it("matches ten more Strides details: bounce, filled tabs, search, calendar log, notes autosave", () => {
+    expect(css).toContain(".check-pop");
+    expect(css).toContain(".filter-dot");
+    expect(css).toContain(".cal-today");
+    expect(css).toContain(".ios-search");
+    expect(shell).toContain('fill={todayActive ? "currentColor" : "none"}');
+    expect(shell).toContain('fill={reportsActive ? "currentColor" : "none"}');
+    expect(create).toContain("dots={{ current: step, total: 3 }}");
+    expect(create).toContain("ios-search");
+    expect(create).toContain("placeholder=\"Search\"");
+    expect(nav).toContain("dots?: { current: number; total: number }");
+    expect(card).toContain("check-pop");
+    expect(today).toContain("filter-dot");
+    expect(settings).toContain("Rate / Feedback");
+    expect(settings).toContain("github.com/hollywoodj/leaps#readme");
+    expect(detail).toContain("Last 14 Days");
+    expect(detail).toContain("onSelect={onSelectDay}");
+    expect(detail).toContain("Notes save automatically");
+    expect(detail).toContain("dateLabel={formatPretty(logDate");
+    expect(cal).toContain("cal-today");
+    expect(cal).toContain("cal-selected");
+    const charts = readFileSync(new URL("../components/Charts.tsx", import.meta.url), "utf8");
+    expect(charts).toContain("DOW[weekday(day.date)]");
+  });
 });

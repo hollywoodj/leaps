@@ -3,7 +3,7 @@
 import { BackButton, NavHeader } from "@/components/NavHeader";
 import { api } from "@/lib/client";
 import type { Tag, Tracker } from "@/lib/types";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function SettingsView() {
@@ -179,6 +179,29 @@ export function SettingsView() {
         </label>
       </div>
       {message && <p className="px-4 py-3 text-sm text-muted">{message}</p>}
+
+      <h2 className="ios-section">More</h2>
+      <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
+        <a
+          href="https://github.com/hollywoodj/leaps/issues/new"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center justify-between px-4 py-3 text-[17px] text-label press"
+        >
+          Rate / Feedback
+          <ChevronRight size={16} className="text-[#c7c7cc]" />
+        </a>
+        <a
+          href="https://github.com/hollywoodj/leaps#readme"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center justify-between px-4 py-3 text-[17px] text-label press"
+        >
+          Help
+          <ChevronRight size={16} className="text-[#c7c7cc]" />
+        </a>
+      </div>
+
       <p className="px-4 pt-8 text-center text-[13px] text-muted">Keep making strides.</p>
       <p className="px-4 pt-1 text-center text-[11px] text-muted">Leaps 1.0.0</p>
     </div>

@@ -255,7 +255,10 @@ export function TodayView() {
         right={
           <div className="relative">
             <HeaderButton onClick={() => setFilterOpen((v) => !v)} label="Filter" active={Boolean(tagId) || filterOpen}>
-              <SlidersHorizontal size={20} />
+              <span className="relative">
+                <SlidersHorizontal size={20} />
+                {tagId ? <span className="filter-dot" /> : null}
+              </span>
             </HeaderButton>
             <FilterPopover open={filterOpen} onClose={() => setFilterOpen(false)}>
               <FilterItem

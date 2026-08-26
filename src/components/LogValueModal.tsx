@@ -10,6 +10,7 @@ export function LogValueModal({
   open,
   title,
   unit,
+  dateLabel,
   initial = 0,
   note = "",
   onClose,
@@ -18,6 +19,7 @@ export function LogValueModal({
   open: boolean;
   title: string;
   unit: string;
+  dateLabel?: string;
   initial?: number;
   note?: string;
   onClose: () => void;
@@ -70,7 +72,9 @@ export function LogValueModal({
         <IosGrabber />
         <div className="mb-2 flex items-start justify-between">
           <div>
-            <div className="text-[12px] font-semibold uppercase tracking-wide text-muted">Log</div>
+            <div className="text-[12px] font-semibold uppercase tracking-wide text-muted">
+              {dateLabel ? `Log · ${dateLabel}` : "Log"}
+            </div>
             <h2 className="text-[22px] font-semibold text-label">{title}</h2>
           </div>
           <button type="button" onClick={onClose} className="rounded-full p-1 text-muted press" aria-label="Close">

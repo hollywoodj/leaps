@@ -1,6 +1,6 @@
 "use client";
 
-import { addMonths, eachDay, endOfMonth, fromISODate, startOfMonth, weekday } from "@/lib/dates";
+import { addMonths, eachDay, endOfMonth, fromISODate, startOfMonth, todayISO, weekday } from "@/lib/dates";
 import clsx from "clsx";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -10,9 +10,11 @@ const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 export function CalendarHeatmap({
   days,
   onSelect,
+  selected,
 }: {
   days: { date: string; percent: number; due?: number; value?: number }[];
   onSelect?: (date: string) => void;
+  selected?: string | null;
 }) {
   const byDate = useMemo(() => new Map(days.map((d) => [d.date, d])), [days]);
   const fallback = days[days.length - 1]?.date ?? days[0]?.date;
@@ -27,6 +29,7 @@ export function CalendarHeatmap({
   }, [month]);
 
   const label = fromISODate(month).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const today = todayISO();
 
   return (
     <div>
@@ -51,6 +54,8 @@ export function CalendarHeatmap({
           const percent = cell?.percent ?? 0;
           const complete = percent >= 100;
           const partial = percent > 0 && percent < 100;
+          const isToday = date === today;
+          const isSelected = Boolean(selected) && date === selected;
           return (
             <button
               key={date}
@@ -65,6 +70,8 @@ export function CalendarHeatmap({
                   complete && "bg-good text-white",
                   partial && "bg-good/30 text-label",
                   !complete && !partial && "text-label",
+                  isToday && "cal-today",
+                  isSelected && "cal-selected",
                 )}
               >
                 {fromISODate(date).getDate()}

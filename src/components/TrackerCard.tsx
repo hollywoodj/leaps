@@ -7,6 +7,7 @@ import type { TodayItem } from "@/lib/types";
 import clsx from "clsx";
 import { Check, Minus, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 export function TrackerCard({
   item,
@@ -131,6 +132,18 @@ function CheckButton({
   const skipped = done && item.todayLogs.some((l) => l.status === "skip");
   const needed = tracker.repeatKind === "daily" ? tracker.timesPerPeriod : 1;
   const fraction = needed > 0 ? Math.min(1, todayValue / needed) : 0;
+  const [pop, setPop] = useState(false);
+  const wasDone = useRef(done);
+
+  useEffect(() => {
+    if (done && !wasDone.current) {
+      setPop(true);
+      const t = window.setTimeout(() => setPop(false), 280);
+      wasDone.current = true;
+      return () => window.clearTimeout(t);
+    }
+    wasDone.current = done;
+  }, [done]);
 
   if (tracker.type === "target" || tracker.type === "average") {
     return (
@@ -198,7 +211,10 @@ function CheckButton({
           e.stopPropagation();
           onUndo();
         }}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-good text-white press"
+        className={clsx(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-good text-white press",
+          pop && "check-pop",
+        )}
         aria-label="Undo"
       >
         <Check size={18} strokeWidth={3} />

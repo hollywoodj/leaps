@@ -16,7 +16,7 @@ import type { RepeatKind, Tag, TrackerDetail as Detail, TrackerType } from "@/li
 import clsx from "clsx";
 import { Check, ChevronRight, Plus, Share } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const WEEKDAYS = [
   { n: 0, l: "S" },
@@ -37,6 +37,8 @@ export function TrackerDetail() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Charts");
   const [error, setError] = useState<string | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [logDate, setLogDate] = useState(todayISO());
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
 
   const load = useCallback(async () => {
@@ -74,8 +76,38 @@ export function TrackerDetail() {
     );
   }
 
-  const { tracker, progress } = data;
-  const date = todayISO();
+  const { tracker, progress, calendar } = data;
+  const today = todayISO();
+
+  function openLog(date = today) {
+    setLogDate(date);
+    setSelectedDay(date);
+    setLogOpen(true);
+  }
+
+  async function onDaySelect(iso: string) {
+    setSelectedDay(iso);
+    if (tracker.type === "habit") {
+      const day = calendar.find((d) => d.date === iso);
+      const complete = Boolean(
+        day &&
+          (day.status === "yes" ||
+            day.value > 0 ||
+            (tracker.isBad && day.status === "no")),
+      );
+      if (complete) {
+        await api(`/api/trackers/${tracker.id}/undo`, { method: "POST", body: JSON.stringify({ date: iso }) });
+      } else {
+        await api(`/api/trackers/${tracker.id}/logs`, {
+          method: "POST",
+          body: JSON.stringify({ date: iso, status: tracker.isBad ? "no" : "yes", value: 1 }),
+        });
+      }
+      await load();
+      return;
+    }
+    openLog(iso);
+  }
 
   return (
     <div>
@@ -100,8 +132,8 @@ export function TrackerDetail() {
         onTab={(next) => setTab(next as (typeof TABS)[number])}
       />
 
-      {tab === "Charts" && <ChartsPane data={data} onToggleMilestone={async (id) => {
-        await api(`/api/milestones/${id}/toggle`, { method: "POST", body: JSON.stringify({ date }) });
+      {tab === "Charts" && <ChartsPane data={data} selectedDay={selectedDay} onSelectDay={(iso) => void onDaySelect(iso)} onToggleMilestone={async (id) => {
+        await api(`/api/milestones/${id}/toggle`, { method: "POST", body: JSON.stringify({ date: today }) });
         await load();
       }} />}
       {tab === "History" && <HistoryPane data={data} onDeleted={load} />}
@@ -113,7 +145,7 @@ export function TrackerDetail() {
       {tracker.type !== "project" && tab === "Charts" && (
         <button
           type="button"
-          onClick={() => setLogOpen(true)}
+          onClick={() => openLog(today)}
           className="fixed z-30 flex h-14 w-14 items-center justify-center rounded-full bg-ios text-white shadow-[0_8px_20px_rgba(0,122,255,0.38)] press"
           style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom))", right: "1.25rem" }}
           aria-label="Log"
@@ -126,12 +158,13 @@ export function TrackerDetail() {
         open={logOpen}
         title={tracker.title}
         unit={tracker.unit || "Value"}
+        dateLabel={formatPretty(logDate, { weekday: "short", month: "short", day: "numeric" })}
         onClose={() => setLogOpen(false)}
         onSave={async (value, note) => {
           const status = tracker.type === "habit" ? (value > 0 ? "yes" : "no") : "value";
           await api(`/api/trackers/${tracker.id}/logs`, {
             method: "POST",
-            body: JSON.stringify({ date, status, value, note }),
+            body: JSON.stringify({ date: logDate, status, value, note }),
           });
           await load();
         }}
@@ -142,9 +175,13 @@ export function TrackerDetail() {
 
 function ChartsPane({
   data,
+  selectedDay,
+  onSelectDay,
   onToggleMilestone,
 }: {
   data: Detail;
+  selectedDay: string | null;
+  onSelectDay: (date: string) => void;
   onToggleMilestone: (id: string) => void;
 }) {
   const { tracker, progress } = data;
@@ -177,6 +214,8 @@ function ChartsPane({
                       ? 20
                       : 0,
             }))}
+            selected={selectedDay}
+            onSelect={onSelectDay}
           />
           <div className="mt-6 flex items-center justify-between px-2">
             <div className="text-center">
@@ -197,6 +236,7 @@ function ChartsPane({
             </div>
           </div>
           <div className="mt-6">
+            <div className="mb-2 text-[13px] font-semibold text-navy">Last 14 Days</div>
             <DailyBars
               days={recent.map((d) => ({
                 date: d.date,
@@ -238,6 +278,17 @@ function ChartsPane({
             </div>
           </div>
           <div className="mt-6">
+            <CalendarHeatmap
+              days={data.calendar.map((d) => ({
+                date: d.date,
+                percent: tracker.goalValue > 0 ? Math.min(100, (d.value / tracker.goalValue) * 100) : d.value > 0 ? 100 : 0,
+              }))}
+              selected={selectedDay}
+              onSelect={onSelectDay}
+            />
+          </div>
+          <div className="mt-6">
+            <div className="mb-2 text-[13px] font-semibold text-navy">Last 14 Days</div>
             <DailyBars
               days={recent.map((d) => ({ date: d.date, value: d.value, ok: tracker.isBad ? d.value <= tracker.goalValue : d.value >= tracker.goalValue }))}
               goal={tracker.goalValue}
@@ -271,6 +322,16 @@ function ChartsPane({
         <>
           <ProgressBar percent={progress.percent} pacePercent={progress.pacePercent} onTrack={progress.onTrack} />
           <p className="mt-2 text-sm text-muted">{progress.label} · {progress.onTrack ? "On pace" : "Behind pace"}</p>
+          <div className="mt-4">
+            <CalendarHeatmap
+              days={data.calendar.map((d) => ({
+                date: d.date,
+                percent: tracker.goalValue > 0 ? Math.min(100, (d.value / tracker.goalValue) * 100) : d.value > 0 ? 100 : 0,
+              }))}
+              selected={selectedDay}
+              onSelect={onSelectDay}
+            />
+          </div>
           <div className="mt-4">
             <LineChart series={data.series} color={tracker.color} />
             <p className="mt-2 text-[12px] text-muted">Solid line is actual. Dashed line is the pace you need to stay on track.</p>
@@ -312,7 +373,28 @@ function HistoryPane({ data, onDeleted }: { data: Detail; onDeleted: () => Promi
 
 function NotesPane({ data, onSaved }: { data: Detail; onSaved: () => Promise<void> }) {
   const [notes, setNotes] = useState(data.tracker.notes);
-  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const savedRef = useRef(data.tracker.notes);
+
+  useEffect(() => {
+    setNotes(data.tracker.notes);
+    savedRef.current = data.tracker.notes;
+  }, [data.tracker.id, data.tracker.notes]);
+
+  useEffect(() => {
+    if (notes === savedRef.current) return;
+    setStatus("saving");
+    const t = window.setTimeout(() => {
+      void (async () => {
+        await api(`/api/trackers/${data.tracker.id}`, { method: "PATCH", body: JSON.stringify({ notes }) });
+        savedRef.current = notes;
+        setStatus("saved");
+        await onSaved();
+      })();
+    }, 450);
+    return () => window.clearTimeout(t);
+  }, [notes, data.tracker.id, onSaved]);
+
   return (
     <div className="bg-grouped px-0 py-4">
       <div className="ios-inset px-4 py-3">
@@ -323,24 +405,9 @@ function NotesPane({ data, onSaved }: { data: Detail; onSaved: () => Promise<voi
           className="h-52 w-full resize-none bg-transparent text-[17px] leading-6 outline-none"
         />
       </div>
-      <div className="px-4">
-        <button
-          type="button"
-          disabled={saving}
-          className="mt-4 w-full rounded-[12px] bg-ios py-3.5 text-[17px] font-semibold text-white press"
-          onClick={async () => {
-            setSaving(true);
-            try {
-              await api(`/api/trackers/${data.tracker.id}`, { method: "PATCH", body: JSON.stringify({ notes }) });
-              await onSaved();
-            } finally {
-              setSaving(false);
-            }
-          }}
-        >
-          Save note
-        </button>
-      </div>
+      <p className="px-8 pt-2 text-[13px] text-muted">
+        {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : "Notes save automatically"}
+      </p>
     </div>
   );
 }

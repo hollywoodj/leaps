@@ -37,7 +37,11 @@ function TabBar({ pathname }: { pathname: string }) {
             todayActive ? "text-ios" : "text-muted",
           )}
         >
-          <ListTodo size={25} strokeWidth={todayActive ? 2.35 : 1.85} />
+          <ListTodo
+            size={25}
+            strokeWidth={todayActive ? 2.1 : 1.85}
+            fill={todayActive ? "currentColor" : "none"}
+          />
           <span className="text-[10px] font-medium leading-tight">Daily Goals</span>
         </Link>
         <Link
@@ -55,7 +59,11 @@ function TabBar({ pathname }: { pathname: string }) {
             reportsActive ? "text-ios" : "text-muted",
           )}
         >
-          <BarChart3 size={24} strokeWidth={reportsActive ? 2.4 : 1.85} />
+          <BarChart3
+            size={24}
+            strokeWidth={reportsActive ? 2.15 : 1.85}
+            fill={reportsActive ? "currentColor" : "none"}
+          />
           <span className="text-[10px] font-medium leading-tight">Reports</span>
         </Link>
       </div>
