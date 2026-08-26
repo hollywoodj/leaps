@@ -1,13 +1,14 @@
 "use client";
 
-import { HeaderButton, NavHeader } from "@/components/NavHeader";
+import { IosSwitch } from "@/components/ios";
+import { BackButton, HeaderButton, NavHeader } from "@/components/NavHeader";
 import { api } from "@/lib/client";
 import { EMOJI_SET, TRACKER_COLORS } from "@/lib/colors";
 import { addDays, todayISO } from "@/lib/dates";
 import { typeCopy } from "@/lib/labels";
 import type { RepeatKind, Template, TrackerInput, TrackerType } from "@/lib/types";
 import clsx from "clsx";
-import { BarChart3, Check, ChevronLeft, ChevronRight, SlidersHorizontal, SquareCheck, TrendingUp } from "lucide-react";
+import { BarChart3, Check, ChevronRight, Search, SlidersHorizontal, SquareCheck, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -54,6 +55,7 @@ export function CreateWizard() {
   const [milestoneText, setMilestoneText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     void api<{ categories: Category[] }>("/api/templates").then((payload) => setCategories(payload.categories));
@@ -102,20 +104,20 @@ export function CreateWizard() {
   const copy = typeCopy(form.type);
 
   return (
-    <div className="min-h-full bg-white">
+    <div className="min-h-full bg-grouped">
       <NavHeader
         title="Add Tracker"
         subtitle={`Step ${step} of 3`}
+        dots={{ current: step, total: 3 }}
         left={
-          <HeaderButton
-            label="Back"
-            onClick={() => {
-              if (step === 1) router.push("/");
-              else setStep((s) => (s === 3 ? 2 : 1));
-            }}
-          >
-            <ChevronLeft size={26} />
-          </HeaderButton>
+          step === 1 ? (
+            <BackButton href="/" label="Daily Goals" />
+          ) : (
+            <BackButton
+              label="Back"
+              onClick={() => setStep((s) => (s === 3 ? 2 : 1))}
+            />
+          )
         }
         right={
           step < 3 ? (
@@ -132,24 +134,49 @@ export function CreateWizard() {
 
       {step === 1 && (
         <div className="pb-8">
+          <label className="ios-search">
+            <Search size={16} className="shrink-0 text-muted" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search"
+              className="w-full bg-transparent text-[17px] outline-none placeholder:text-muted"
+              type="search"
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+          </label>
+          <div className="ios-inset">
           <button
             type="button"
             onClick={() => setStep(2)}
-            className="flex w-full items-center justify-between border-b border-black/[0.06] px-4 py-4 text-left"
+            className="flex w-full items-center justify-between px-4 py-3.5 text-left press"
           >
-            <span className="text-[16px] font-semibold text-ios">Create Tracker</span>
+            <span className="text-[17px] font-semibold text-ios">Create Tracker</span>
             <ChevronRight size={18} className="text-muted" />
           </button>
-          {categories.map((group) => (
+          </div>
+          {categories.map((group) => {
+            const q = query.trim().toLowerCase();
+            const templates = q
+              ? group.templates.filter(
+                  (t) =>
+                    t.title.toLowerCase().includes(q) ||
+                    t.type.toLowerCase().includes(q) ||
+                    group.category.toLowerCase().includes(q),
+                )
+              : group.templates;
+            if (!templates.length) return null;
+            return (
             <div key={group.category}>
-              <h2 className="bg-grouped px-4 py-2 text-[13px] font-semibold uppercase tracking-wide text-muted">{group.category}</h2>
-              <div className="divide-y divide-black/[0.06]">
-                {group.templates.map((template) => (
+              <h2 className="ios-section !pt-3">{group.category}</h2>
+              <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
+                {templates.map((template) => (
                   <button
                     key={template.id}
                     type="button"
                     onClick={() => applyTemplate(template)}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left press"
                   >
                     <span className="text-xl">{template.emoji}</span>
                     <span className="flex-1 text-[16px] font-medium text-label">{template.title}</span>
@@ -158,20 +185,23 @@ export function CreateWizard() {
                 ))}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {step === 2 && (
-        <div>
-          <input
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="Tracker Name"
-            className="w-full border-b border-black/[0.08] px-4 py-4 text-[20px] font-semibold text-label outline-none placeholder:text-muted"
-          />
+        <div className="pb-8">
+          <div className="ios-inset">
+            <input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="Tracker Name"
+              className="w-full px-4 py-3.5 text-[20px] font-semibold text-label outline-none placeholder:text-muted"
+            />
+          </div>
           <p className="px-4 py-3 text-center text-[14px] text-muted">How do you want to track this?</p>
-          <div className="divide-y divide-black/[0.06]">
+          <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
             {TYPES.map((type) => {
               const info = typeCopy(type.id);
               const selected = form.type === type.id;
@@ -187,7 +217,7 @@ export function CreateWizard() {
                       endDate: type.id === "target" || type.id === "project" ? curr.endDate || addDays(todayISO(), 90) : curr.endDate,
                     }));
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                  className="flex w-full items-center gap-3 px-4 py-[13px] text-left press"
                 >
                   <Icon size={22} className={selected ? "text-good" : "text-navy"} />
                   <span className="flex-1">
@@ -199,133 +229,137 @@ export function CreateWizard() {
               );
             })}
           </div>
-          <div className="mt-6 px-4 pb-8">
-            <div className="text-center text-[13px] font-bold uppercase tracking-wide text-navy">{copy.title}</div>
-            <div className="mt-1 text-center text-[13px] italic text-muted">{copy.examples}</div>
-            <div className="mt-4 rounded-xl border border-black/10 p-4">
-              <label className="text-[12px] font-semibold uppercase tracking-wide text-muted">Emoji</label>
+          <h2 className="ios-section">{copy.title}</h2>
+          <p className="px-8 pb-2 text-[13px] italic text-muted">{copy.examples}</p>
+          <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
+            <div className="px-4 py-3">
+              <label className="text-[13px] text-muted">Emoji</label>
               <div className="mt-2 flex flex-wrap gap-1">
                 {EMOJI_SET.map((emoji) => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => setForm({ ...form, emoji })}
-                    className={clsx("h-9 w-9 rounded-lg text-lg", form.emoji === emoji ? "bg-fill" : "bg-grouped")}
+                    className={clsx("h-9 w-9 rounded-lg text-lg press", form.emoji === emoji ? "bg-fill" : "bg-grouped")}
                   >
                     {emoji}
                   </button>
                 ))}
               </div>
-              <label className="mt-4 block text-[12px] font-semibold uppercase tracking-wide text-muted">Color</label>
+            </div>
+            <div className="px-4 py-3">
+              <label className="text-[13px] text-muted">Color</label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {TRACKER_COLORS.map((color) => (
                   <button
                     key={color}
                     type="button"
                     onClick={() => setForm({ ...form, color })}
-                    className={clsx("h-7 w-7 rounded-full", form.color === color && "ring-2 ring-offset-2 ring-ios")}
+                    className={clsx("h-7 w-7 rounded-full press", form.color === color && "ring-2 ring-offset-2 ring-ios")}
                     style={{ background: color }}
                   />
                 ))}
               </div>
-              {form.type === "habit" && (
-                <>
-                  <label className="mt-4 flex items-center gap-2 text-sm font-medium">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(form.isBad)}
-                      onChange={(e) => setForm({ ...form, isBad: e.target.checked, goalValue: e.target.checked ? 0 : form.goalValue })}
-                    />
-                    This is a bad habit I want to limit
-                  </label>
-                  <label className="mt-3 block text-[12px] font-semibold uppercase tracking-wide text-muted">
-                    {form.isBad ? "Max allowed per period" : "Times per period"}
-                    <input
-                      type="number"
-                      value={form.isBad ? form.goalValue : form.timesPerPeriod}
-                      onChange={(e) =>
-                        setForm(
-                          form.isBad
-                            ? { ...form, goalValue: Number(e.target.value) }
-                            : { ...form, timesPerPeriod: Number(e.target.value) },
-                        )
-                      }
-                      className="field-ios mt-1 w-full text-left"
-                    />
-                  </label>
-                </>
-              )}
-              {(form.type === "target" || form.type === "average") && (
-                <label className="mt-3 block text-[12px] font-semibold uppercase tracking-wide text-muted">
-                  {form.type === "target" ? "Goal value" : "Target average"}
-                  <input
-                    type="number"
-                    value={form.goalValue}
-                    onChange={(e) => setForm({ ...form, goalValue: Number(e.target.value) })}
-                    className="field-ios mt-1 w-full text-left"
+            </div>
+            {form.type === "habit" && (
+              <>
+                <label className="flex items-center justify-between px-4 py-3 text-[15px]">
+                  <span>Bad habit I want to limit</span>
+                  <IosSwitch
+                    checked={Boolean(form.isBad)}
+                    label="Bad habit"
+                    onChange={(checked) => setForm({ ...form, isBad: checked, goalValue: checked ? 0 : form.goalValue })}
                   />
                 </label>
-              )}
-              {form.type === "project" && (
-                <div className="mt-3">
-                  <div className="text-[12px] font-semibold uppercase tracking-wide text-muted">Milestones</div>
-                  <div className="mt-2 flex gap-2">
-                    <input
-                      value={milestoneText}
-                      onChange={(e) => setMilestoneText(e.target.value)}
-                      className="field-ios flex-1 text-left"
-                      placeholder="Add a milestone"
-                    />
-                    <button
-                      type="button"
-                      className="rounded-lg bg-grouped px-3 text-sm font-semibold text-ios"
-                      onClick={() => {
-                        if (!milestoneText.trim()) return;
-                        setForm({ ...form, milestones: [...(form.milestones ?? []), { title: milestoneText.trim() }] });
-                        setMilestoneText("");
-                      }}
-                    >
-                      Add
-                    </button>
-                  </div>
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {form.milestones?.map((m, i) => (
-                      <li key={`${m.title}-${i}`} className="flex justify-between">
-                        {m.title}
-                        <button
-                          type="button"
-                          className="text-xs text-bad"
-                          onClick={() => setForm({ ...form, milestones: form.milestones?.filter((_, idx) => idx !== i) })}
-                        >
-                          Remove
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <label className="mt-3 block text-[12px] font-semibold uppercase tracking-wide text-muted">
-                Unit
+                <label className="flex items-center justify-between gap-3 px-4 py-3 text-[15px]">
+                  <span className="text-muted">{form.isBad ? "Max allowed" : "Times per period"}</span>
+                  <input
+                    type="number"
+                    value={form.isBad ? form.goalValue : form.timesPerPeriod}
+                    onChange={(e) =>
+                      setForm(
+                        form.isBad
+                          ? { ...form, goalValue: Number(e.target.value) }
+                          : { ...form, timesPerPeriod: Number(e.target.value) },
+                      )
+                    }
+                    className="field-ios"
+                  />
+                </label>
+              </>
+            )}
+            {(form.type === "target" || form.type === "average") && (
+              <label className="flex items-center justify-between gap-3 px-4 py-3 text-[15px]">
+                <span className="text-muted">{form.type === "target" ? "Goal value" : "Target average"}</span>
                 <input
-                  value={form.unit}
-                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                  className="field-ios mt-1 w-full text-left"
-                  placeholder="pages, miles, hours, $"
+                  type="number"
+                  value={form.goalValue}
+                  onChange={(e) => setForm({ ...form, goalValue: Number(e.target.value) })}
+                  className="field-ios"
                 />
               </label>
-            </div>
+            )}
+            {form.type === "project" && (
+              <div className="px-4 py-3">
+                <div className="text-[13px] text-muted">Milestones</div>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    value={milestoneText}
+                    onChange={(e) => setMilestoneText(e.target.value)}
+                    className="field-ios flex-1 text-left"
+                    placeholder="Add a milestone"
+                  />
+                  <button
+                    type="button"
+                    className="text-[15px] font-semibold text-ios press"
+                    onClick={() => {
+                      if (!milestoneText.trim()) return;
+                      setForm({ ...form, milestones: [...(form.milestones ?? []), { title: milestoneText.trim() }] });
+                      setMilestoneText("");
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
+                <ul className="mt-2 space-y-1 text-[15px]">
+                  {form.milestones?.map((m, i) => (
+                    <li key={`${m.title}-${i}`} className="flex justify-between">
+                      {m.title}
+                      <button
+                        type="button"
+                        className="text-[13px] text-bad press"
+                        onClick={() => setForm({ ...form, milestones: form.milestones?.filter((_, idx) => idx !== i) })}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <label className="flex items-center justify-between gap-3 px-4 py-3 text-[15px]">
+              <span className="text-muted">Unit</span>
+              <input
+                value={form.unit}
+                onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                className="field-ios"
+                placeholder="pages, miles, hours, $"
+              />
+            </label>
           </div>
         </div>
       )}
 
       {step === 3 && (
-        <div className="divide-y divide-black/[0.06]">
+        <div className="bg-grouped pb-10">
+          <h2 className="ios-section">Repeat</h2>
+          <div className="ios-inset divide-y divide-[rgba(60,60,67,0.12)]">
           <label className="flex items-center justify-between px-4 py-3 text-[15px]">
             <span className="text-muted">Repeat</span>
             <select
               value={form.repeatKind}
               onChange={(e) => setForm({ ...form, repeatKind: e.target.value as RepeatKind })}
-              className="field-ios"
+              className="field-ios text-ios"
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
@@ -345,7 +379,7 @@ export function CreateWizard() {
                       const next = curr.includes(d.n) ? curr.filter((x) => x !== d.n) : [...curr, d.n];
                       setForm({ ...form, weekdays: next.length ? next : null });
                     }}
-                    className={clsx("h-9 w-9 rounded-full text-xs font-bold", selected ? "bg-ios text-white" : "bg-grouped")}
+                    className={clsx("h-9 w-9 rounded-full text-[13px] font-bold press", selected ? "bg-ios text-white" : "bg-grouped text-label")}
                   >
                     {d.l}
                   </button>
@@ -359,7 +393,7 @@ export function CreateWizard() {
               type="date"
               value={form.startDate}
               onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-              className="field-ios"
+              className="field-ios text-ios"
             />
           </label>
           {(form.type === "target" || form.type === "project") && (
@@ -369,25 +403,27 @@ export function CreateWizard() {
                 type="date"
                 value={form.endDate ?? ""}
                 onChange={(e) => setForm({ ...form, endDate: e.target.value || null })}
-                className="field-ios"
+                className="field-ios text-ios"
               />
             </label>
           )}
-          <div className="px-4 py-3">
-            <div className="text-[13px] text-muted">Notes</div>
+          </div>
+          <h2 className="ios-section">Notes</h2>
+          <div className="ios-inset px-4 py-3">
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="mt-2 h-24 w-full resize-none rounded-xl bg-grouped px-3 py-2 text-[15px] outline-none"
+              placeholder="Why this goal matters…"
+              className="h-24 w-full resize-none bg-transparent text-[15px] outline-none"
             />
           </div>
           {error && <p className="px-4 py-3 text-sm text-bad">{error}</p>}
-          <div className="px-4 py-4">
+          <div className="px-4 py-5">
             <button
               type="button"
               disabled={saving}
               onClick={() => void save()}
-              className="w-full rounded-xl bg-ios py-3 text-[16px] font-semibold text-white disabled:opacity-60"
+              className="w-full rounded-[12px] bg-ios py-3.5 text-[17px] font-semibold text-white press disabled:opacity-60"
             >
               Start Tracking
             </button>

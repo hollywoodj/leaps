@@ -1,4 +1,6 @@
-import { formatShort } from "@/lib/dates";
+import { formatShort, weekday } from "@/lib/dates";
+
+const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 
 export function LineChart({
   series,
@@ -68,23 +70,32 @@ export function DailyBars({
   if (!days.length) return null;
   const max = Math.max(goal || 1, ...days.map((d) => d.value), 1);
   return (
-    <div className="flex h-36 items-end gap-0.5">
-      {days.map((day) => {
-        const h = Math.max(8, (day.value / max) * 100);
-        return (
-          <div key={day.date} className="flex flex-1 flex-col items-center justify-end gap-1" title={`${formatShort(day.date)}: ${day.value}`}>
-            <div
-              className="flex w-full items-start justify-center rounded-t-sm pt-0.5 text-[9px] font-semibold text-white"
-              style={{
-                height: `${h}%`,
-                background: day.ok ? "#34c759" : day.value > 0 ? "#ff3b30" : "#d1d1d6",
-              }}
-            >
-              {day.value ? (Number.isInteger(day.value) ? day.value : day.value.toFixed(1)) : ""}
+    <div>
+      <div className="flex h-36 items-end gap-0.5">
+        {days.map((day) => {
+          const h = Math.max(8, (day.value / max) * 100);
+          return (
+            <div key={day.date} className="flex flex-1 flex-col items-center justify-end gap-1" title={`${formatShort(day.date)}: ${day.value}`}>
+              <div
+                className="flex w-full items-start justify-center rounded-t-sm pt-0.5 text-[9px] font-semibold text-white"
+                style={{
+                  height: `${h}%`,
+                  background: day.ok ? "#34c759" : day.value > 0 ? "#ff3b30" : "#d1d1d6",
+                }}
+              >
+                {day.value ? (Number.isInteger(day.value) ? day.value : day.value.toFixed(1)) : ""}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      <div className="mt-1 flex gap-0.5">
+        {days.map((day) => (
+          <span key={`${day.date}-dow`} className="flex-1 text-center text-[10px] font-medium text-muted">
+            {DOW[weekday(day.date)]}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

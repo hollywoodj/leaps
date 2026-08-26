@@ -2,6 +2,7 @@
 
 import { BarChart } from "@/components/Charts";
 import { CalendarHeatmap } from "@/components/CalendarHeatmap";
+import { FilterItem, FilterPopover, IosSpinner } from "@/components/ios";
 import { HeaderButton, NavHeader } from "@/components/NavHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { api } from "@/lib/client";
@@ -61,7 +62,7 @@ export function ReportsView() {
       <NavHeader
         title="Reports"
         menu={[
-          { href: "/", label: "Today" },
+          { href: "/", label: "Daily Goals" },
           { href: "/reports", label: "Reports" },
         ]}
         left={
@@ -70,9 +71,41 @@ export function ReportsView() {
           </HeaderButton>
         }
         right={
-          <HeaderButton onClick={() => setFilterOpen((v) => !v)} label="Filter">
-            <SlidersHorizontal size={20} />
-          </HeaderButton>
+          <div className="relative">
+            <HeaderButton onClick={() => setFilterOpen((v) => !v)} label="Filter" active={Boolean(tagId) || period !== "month" || filterOpen}>
+              <SlidersHorizontal size={20} />
+            </HeaderButton>
+            <FilterPopover open={filterOpen} onClose={() => setFilterOpen(false)}>
+              <div className="px-3.5 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">Period</div>
+              {PERIODS.map((p) => (
+                <FilterItem
+                  key={p}
+                  active={period === p}
+                  onClick={() => {
+                    setPeriod(p);
+                    setAsOf(todayISO());
+                  }}
+                >
+                  {p === "all" ? "All time" : p[0].toUpperCase() + p.slice(1)}
+                </FilterItem>
+              ))}
+              <div className="my-1 h-px bg-[rgba(60,60,67,0.12)]" />
+              <div className="px-3.5 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">Tags</div>
+              <FilterItem active={!tagId} onClick={() => setTagId("")}>
+                All
+              </FilterItem>
+              {tags.map((tag) => (
+                <FilterItem
+                  key={tag.id}
+                  active={tagId === tag.id}
+                  color={tag.color}
+                  onClick={() => setTagId(tagId === tag.id ? "" : tag.id)}
+                >
+                  {tag.name}
+                </FilterItem>
+              ))}
+            </FilterPopover>
+          </div>
         }
         tabs={[...TABS]}
         activeTab={tab}
@@ -103,52 +136,10 @@ export function ReportsView() {
         )}
       </NavHeader>
 
-      {filterOpen && (
-        <div className="flex flex-wrap gap-2 border-b border-black/5 bg-white px-4 py-3">
-          {PERIODS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => {
-                setPeriod(p);
-                setAsOf(todayISO());
-              }}
-              className={clsx(
-                "rounded-full px-3 py-1 text-[12px] font-semibold capitalize",
-                period === p ? "bg-ios text-white" : "bg-grouped text-label",
-              )}
-            >
-              {p}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setTagId("")}
-            className={clsx(
-              "rounded-full px-3 py-1 text-[12px] font-semibold",
-              !tagId ? "bg-ios text-white" : "bg-grouped text-label",
-            )}
-          >
-            All
-          </button>
-          {tags.map((tag) => (
-            <button
-              key={tag.id}
-              type="button"
-              onClick={() => setTagId(tagId === tag.id ? "" : tag.id)}
-              className="rounded-full px-3 py-1 text-[12px] font-semibold"
-              style={tagId === tag.id ? { background: tag.color, color: "white" } : { background: "#f2f2f7", color: "#163a73" }}
-            >
-              {tag.name}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between bg-grouped px-4 py-2 text-[13px] font-medium text-label">
+      <div className="hairline flex h-11 items-center justify-between bg-[#f7f7f7] px-3 text-[15px] font-semibold text-label">
         <button
           type="button"
-          className="rounded-full p-1 text-navy disabled:text-muted disabled:opacity-40"
+          className="rounded-full p-1 text-ios disabled:text-muted disabled:opacity-40 press"
           aria-label="Previous period"
           disabled={period === "all"}
           onClick={() => {
@@ -170,7 +161,7 @@ export function ReportsView() {
         </span>
         <button
           type="button"
-          className="rounded-full p-1 text-navy disabled:text-muted disabled:opacity-40"
+          className="rounded-full p-1 text-ios disabled:text-muted disabled:opacity-40 press"
           aria-label="Next period"
           disabled={period === "all" || asOf >= today}
           onClick={() => {
@@ -186,15 +177,15 @@ export function ReportsView() {
       </div>
 
       {error && <p className="px-4 py-3 text-sm text-bad">{error}</p>}
-      {!data && !error && <p className="px-4 py-8 text-center text-sm text-muted">Building reports…</p>}
+      {!data && !error && <IosSpinner label="Building reports" />}
 
       {data && tab === "Progress" && (
-        <div className="divide-y divide-black/[0.06] bg-white">
+        <div className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">
           <div className="px-4 py-3">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-[16px] font-semibold text-navy">Average Progress: {Math.round(data.overallPercent)}%</div>
               <div className="text-right">
-                <div className="text-[17px] font-semibold">{data.onTrackCount}/{data.trackerCount}</div>
+                <div className="text-[20px] font-semibold leading-none">{data.onTrackCount}/{data.trackerCount}</div>
                 <div className="text-[11px] text-good">on track</div>
               </div>
             </div>
@@ -203,17 +194,23 @@ export function ReportsView() {
           {data.trackers.map((row) => {
             const metrics = reportMetrics(row.tracker, row.progress);
             return (
-              <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="block px-4 py-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <div className="truncate text-[16px] font-semibold text-navy">
-                    {row.tracker.title} {row.tracker.emoji}
+              <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="block px-4 py-3 press">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="line-clamp-2 text-[17px] font-semibold leading-5 text-navy">
+                      {row.tags[0] && (
+                        <span className="mr-1.5 inline-block h-[7px] w-[7px] translate-y-[-1px] rounded-full" style={{ background: row.tags[0].color }} />
+                      )}
+                      {row.tracker.title} <span className="text-[15px] font-normal">{row.tracker.emoji}</span>
+                    </div>
+                    <div className="mt-0.5 text-[12px] text-muted">{frequencyLabel(row.tracker)}</div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <div className="text-[17px] font-semibold leading-none">{metrics.primary}</div>
+                    <div className="text-[20px] font-semibold leading-none">{metrics.primary}</div>
                     <div className="mt-0.5 text-[11px] text-muted">{metrics.secondary}</div>
                   </div>
                 </div>
-                <div className="mt-2">
+                <div className="mt-1.5">
                   <ProgressBar percent={row.progress.percent} pacePercent={row.progress.pacePercent} onTrack={row.progress.onTrack} />
                 </div>
               </Link>
@@ -223,17 +220,20 @@ export function ReportsView() {
       )}
 
       {data && tab === "Trends" && (
-        <div className="divide-y divide-black/[0.06] bg-white">
+        <div className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">
           {data.trackers.map((row) => (
-            <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="flex items-center justify-between px-4 py-3">
+            <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="flex items-center justify-between px-4 py-3 press">
               <div>
-                <div className="text-[16px] font-semibold text-navy">
-                  {row.tracker.title} {row.tracker.emoji}
+                <div className="text-[17px] font-semibold text-navy">
+                  {row.tags[0] && (
+                    <span className="mr-1.5 inline-block h-[7px] w-[7px] translate-y-[-1px] rounded-full" style={{ background: row.tags[0].color }} />
+                  )}
+                  {row.tracker.title} <span className="text-[15px] font-normal">{row.tracker.emoji}</span>
                 </div>
                 <div className="text-[12px] text-muted">{frequencyLabel(row.tracker)}</div>
               </div>
               <div className="text-right">
-                <div className="text-[17px] font-semibold">{Math.round(row.progress.successRate * 100)}%</div>
+                <div className="text-[20px] font-semibold">{Math.round(row.progress.successRate * 100)}%</div>
                 <div className="text-[12px] text-muted">
                   {row.completed}/{row.dueCount}
                 </div>
@@ -250,15 +250,25 @@ export function ReportsView() {
       )}
 
       {data && tab === "Rankings" && (
-        <div className="divide-y divide-black/[0.06] bg-white">
+        <div className="ios-group divide-y divide-[rgba(60,60,67,0.12)]">
           {[...data.trackers]
             .sort((a, b) => b.progress.streak - a.progress.streak || b.progress.successRate - a.progress.successRate)
             .map((row, index) => (
-              <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="flex items-center gap-3 px-4 py-3">
-                <span className="w-6 text-center text-[15px] font-bold text-muted">{index + 1}</span>
+              <Link key={row.tracker.id} href={`/trackers/${row.tracker.id}`} className="flex items-center gap-3 px-4 py-3 press">
+                <span
+                  className={clsx(
+                    "w-7 text-center text-[17px] font-bold",
+                    index === 0 ? "text-[#f5c518]" : index === 1 ? "text-[#a8b0bd]" : index === 2 ? "text-[#d4a574]" : "text-muted",
+                  )}
+                >
+                  {index + 1}
+                </span>
                 <div className="flex-1">
-                  <div className="text-[16px] font-semibold text-navy">
-                    {row.tracker.title} {row.tracker.emoji}
+                  <div className="text-[17px] font-semibold text-navy">
+                    {row.tags[0] && (
+                      <span className="mr-1.5 inline-block h-[7px] w-[7px] translate-y-[-1px] rounded-full" style={{ background: row.tags[0].color }} />
+                    )}
+                    {row.tracker.title} <span className="text-[15px] font-normal">{row.tracker.emoji}</span>
                   </div>
                   <div className="text-[12px] text-muted">
                     {row.progress.streak} day streak · {Math.round(row.progress.successRate * 100)}% success

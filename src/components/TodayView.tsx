@@ -1,6 +1,7 @@
 "use client";
 
 import { DateStrip } from "@/components/DateStrip";
+import { FilterItem, FilterPopover, IosSpinner } from "@/components/ios";
 import { HeaderButton, NavHeader } from "@/components/NavHeader";
 import { LogValueModal } from "@/components/LogValueModal";
 import { PerfectDay } from "@/components/PerfectDay";
@@ -224,12 +225,26 @@ export function TodayView() {
   const done = filtered(data?.done ?? []);
   const empty = data && due.length + done.length + missed.length === 0;
 
+  function cardHandlers(item: TodayItem) {
+    return {
+      onYes: () => {
+        if (item.section === "missed" && item.tracker.isBad) void undo(item);
+        else void log(item, item.tracker.isBad ? "no" : "yes");
+      },
+      onDid: () => void log(item, "yes"),
+      onSkip: () => void log(item, "skip"),
+      onUndo: () => void undo(item),
+      onLog: () => setLogging(item),
+      onToggleMilestone: (id: string) => void toggleMilestone(item, id),
+    };
+  }
+
   return (
     <div>
       <NavHeader
-        title="Today"
+        title="Daily Goals"
         menu={[
-          { href: "/", label: "Today" },
+          { href: "/", label: "Daily Goals" },
           { href: "/reports", label: "Reports" },
         ]}
         left={
@@ -238,42 +253,60 @@ export function TodayView() {
           </HeaderButton>
         }
         right={
-          <HeaderButton onClick={() => setFilterOpen((v) => !v)} label="Filter">
-            <SlidersHorizontal size={20} />
-          </HeaderButton>
+          <div className="relative">
+            <HeaderButton onClick={() => setFilterOpen((v) => !v)} label="Filter" active={Boolean(tagId) || filterOpen}>
+              <span className="relative">
+                <SlidersHorizontal size={20} />
+                {tagId ? <span className="filter-dot" /> : null}
+              </span>
+            </HeaderButton>
+            <FilterPopover open={filterOpen} onClose={() => setFilterOpen(false)}>
+              <FilterItem
+                active={!tagId}
+                onClick={() => {
+                  setTagId("");
+                  setFilterOpen(false);
+                }}
+              >
+                All
+              </FilterItem>
+              {tags.map((tag) => (
+                <FilterItem
+                  key={tag.id}
+                  active={tagId === tag.id}
+                  color={tag.color}
+                  onClick={() => {
+                    setTagId(tag.id);
+                    setFilterOpen(false);
+                  }}
+                >
+                  {tag.name}
+                </FilterItem>
+              ))}
+            </FilterPopover>
+          </div>
         }
       />
 
       <DateStrip date={date} onChange={setDate} />
 
-      {filterOpen && (
-        <div className="flex flex-wrap gap-2 border-b border-black/5 bg-white px-4 py-3">
-          <FilterChip active={!tagId} onClick={() => setTagId("")}>
-            All
-          </FilterChip>
-          {tags.map((tag) => (
-            <FilterChip key={tag.id} active={tagId === tag.id} onClick={() => setTagId(tag.id)} color={tag.color}>
-              {tag.name}
-            </FilterChip>
-          ))}
-        </div>
-      )}
-
       {error && <p className="px-4 py-3 text-sm text-bad">{error}</p>}
-      {!data && !error && <p className="px-4 py-8 text-center text-sm text-muted">Loading your trackers…</p>}
+      {!data && !error && <IosSpinner label="Loading" />}
 
       {empty && (
-        <div className="mx-4 mt-8 rounded-2xl bg-white px-5 py-10 text-center shadow-card">
-          <div className="text-4xl">🎯</div>
-          <h2 className="mt-3 text-lg font-semibold">Nothing due on this day</h2>
-          <p className="mt-1 text-sm text-muted">Create a habit, target, average, or project to start tracking.</p>
-          <div className="mt-5 flex justify-center gap-2">
-            <Link href="/create" className="rounded-full bg-ios px-4 py-2 text-sm font-semibold text-white">
-              Create tracker
+        <div className="px-8 py-16 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl shadow-card">🎯</div>
+          <h2 className="mt-4 text-[20px] font-semibold text-navy">Nothing due</h2>
+          <p className="mt-1 text-[15px] leading-5 text-muted">
+            Add a habit, target, average, or project — or start from a template.
+          </p>
+          <div className="mt-6 flex justify-center gap-2">
+            <Link href="/create" className="rounded-full bg-ios px-4 py-2 text-[15px] font-semibold text-white press">
+              Create Tracker
             </Link>
             <button
               type="button"
-              className="rounded-full bg-fill px-4 py-2 text-sm font-semibold"
+              className="rounded-full bg-white px-4 py-2 text-[15px] font-semibold text-ios shadow-card press"
               onClick={async () => {
                 await api("/api/data", { method: "POST" });
                 await load();
@@ -286,47 +319,20 @@ export function TodayView() {
       )}
 
       {data && !empty && (
-        <div className="pb-4">
+        <div className="pb-5">
           <Section title="Due" count={due.length}>
             {due.map((item) => (
-              <TrackerCard
-                key={item.tracker.id}
-                item={item}
-                busy={busyIds.includes(item.tracker.id)}
-                onYes={() => void log(item, item.tracker.isBad ? "no" : "yes")}
-                onSkip={() => void log(item, "skip")}
-                onUndo={() => void undo(item)}
-                onLog={() => setLogging(item)}
-                onToggleMilestone={(id) => void toggleMilestone(item, id)}
-              />
+              <TrackerCard key={item.tracker.id} item={item} busy={busyIds.includes(item.tracker.id)} {...cardHandlers(item)} />
             ))}
           </Section>
           <Section title="Missed" count={missed.length}>
             {missed.map((item) => (
-              <TrackerCard
-                key={item.tracker.id}
-                item={item}
-                busy={busyIds.includes(item.tracker.id)}
-                onYes={() => undefined}
-                onSkip={() => undefined}
-                onUndo={() => void undo(item)}
-                onLog={() => setLogging(item)}
-                onToggleMilestone={() => undefined}
-              />
+              <TrackerCard key={item.tracker.id} item={item} busy={busyIds.includes(item.tracker.id)} {...cardHandlers(item)} />
             ))}
           </Section>
           <Section title="Done" count={done.length}>
             {done.map((item) => (
-              <TrackerCard
-                key={item.tracker.id}
-                item={item}
-                busy={busyIds.includes(item.tracker.id)}
-                onYes={() => undefined}
-                onSkip={() => undefined}
-                onUndo={() => void undo(item)}
-                onLog={() => setLogging(item)}
-                onToggleMilestone={(id) => void toggleMilestone(item, id)}
-              />
+              <TrackerCard key={item.tracker.id} item={item} busy={busyIds.includes(item.tracker.id)} {...cardHandlers(item)} />
             ))}
           </Section>
         </div>
@@ -355,39 +361,12 @@ export function TodayView() {
 function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   if (count === 0) return null;
   return (
-    <section className="mt-4">
-      <div className="flex items-center justify-between px-4 pb-1.5">
-        <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted">{title}</h2>
-        <span className="text-[12px] font-semibold text-muted">{count}</span>
+    <section className="mt-3.5">
+      <div className="flex items-center justify-between px-4 pb-1">
+        <h2 className="text-[13px] font-normal uppercase tracking-[0.04em] text-muted">{title}</h2>
+        <span className="text-[13px] font-medium text-muted">{count}</span>
       </div>
-      <div className="divide-y divide-black/[0.06] border-y border-black/[0.06] bg-white">{children}</div>
+      <div className="ios-group check-inset">{children}</div>
     </section>
-  );
-}
-
-function FilterChip({
-  active,
-  onClick,
-  children,
-  color,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  color?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-full px-3 py-1 text-[12px] font-semibold"
-      style={
-        active
-          ? { background: color || "#007aff", color: "white" }
-          : { background: "#f2f2f7", color: "#163a73" }
-      }
-    >
-      {children}
-    </button>
   );
 }

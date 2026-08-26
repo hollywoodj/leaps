@@ -11,7 +11,7 @@ const config: Config = {
         },
         ios: "#007aff",
         grouped: "#f2f2f7",
-        label: "#163a73",
+        label: "#1a3d7a",
         muted: "#8e8e93",
         fill: "#e5e5ea",
         good: "#34c759",

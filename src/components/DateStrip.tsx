@@ -56,20 +56,34 @@ export function DateStrip({ date, onChange }: { date: string; onChange: (next: s
 
   return (
     <div className="hairline bg-white">
-      <div className="flex items-center gap-1 px-3 pt-2">
-        <button
-          type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-ios"
-          aria-label="Jump to date"
-          onClick={() => {
-            const input = picker.current;
-            if (!input) return;
-            if (typeof input.showPicker === "function") input.showPicker();
-            else input.click();
-          }}
-        >
-          <CalendarDays size={18} />
-        </button>
+      <div className="flex items-end">
+        <div className="flex w-[52px] shrink-0 flex-col items-center pb-[11px] pt-1.5">
+          <span className="h-[13px]" />
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center text-ios press"
+            aria-label="Jump to date"
+            onClick={() => {
+              const input = picker.current;
+              if (!input) return;
+              if (typeof input.showPicker === "function") input.showPicker();
+              else input.click();
+            }}
+          >
+            <CalendarDays size={22} strokeWidth={1.8} />
+          </button>
+          {date !== today ? (
+            <button
+              type="button"
+              className="mt-0.5 text-[10px] font-semibold text-ios"
+              onClick={() => onChange(today)}
+            >
+              Today
+            </button>
+          ) : (
+            <span className="mt-1 h-1.5 w-1.5" />
+          )}
+        </div>
         <input
           ref={picker}
           type="date"
@@ -82,47 +96,38 @@ export function DateStrip({ date, onChange }: { date: string; onChange: (next: s
           className="sr-only"
           aria-label="Choose date"
         />
-        {date !== today && (
-          <button
-            type="button"
-            className="rounded-full bg-ios/10 px-2.5 py-1 text-[11px] font-semibold text-ios"
-            onClick={() => onChange(today)}
-          >
-            Today
-          </button>
-        )}
-      </div>
-      <div ref={scroller} onScroll={onScroll} className="no-scrollbar flex gap-2 overflow-x-auto px-3 pb-3 pt-1">
-        {days.map((day) => {
-          const dt = fromISODate(day);
-          const selected = day === date;
-          const isToday = day === today;
-          return (
-            <button
-              key={day}
-              type="button"
-              data-day={day}
-              onClick={() => onChange(day)}
-              className="flex w-12 shrink-0 flex-col items-center"
-            >
-              <span className={clsx("text-[10px] font-semibold", selected ? "text-ios" : "text-muted")}>
-                {MONTH[dt.getMonth()]}
-              </span>
-              <span
-                className={clsx(
-                  "mt-1 flex h-10 w-10 items-center justify-center rounded-full text-[17px] font-semibold",
-                  selected ? "bg-ios text-white" : "text-label",
-                )}
+        <div ref={scroller} onScroll={onScroll} className="no-scrollbar flex gap-1.5 overflow-x-auto py-1.5 pr-3">
+          {days.map((day) => {
+            const dt = fromISODate(day);
+            const selected = day === date;
+            const isToday = day === today;
+            return (
+              <button
+                key={day}
+                type="button"
+                data-day={day}
+                onClick={() => onChange(day)}
+                className="flex w-[46px] shrink-0 flex-col items-center press"
               >
-                {dt.getDate()}
-              </span>
-              <span className={clsx("mt-1 text-[10px] font-semibold", selected ? "text-ios" : "text-muted")}>
-                {WEEK[dt.getDay()]}
-              </span>
-              <span className={clsx("mt-1 h-1.5 w-1.5 rounded-full", selected || isToday ? "bg-ios" : "bg-transparent")} />
-            </button>
-          );
-        })}
+                <span className={clsx("text-[10px] font-semibold tracking-wide", selected ? "text-ios" : "text-muted")}>
+                  {MONTH[dt.getMonth()]}
+                </span>
+                <span
+                  className={clsx(
+                    "mt-0.5 flex h-9 w-9 items-center justify-center rounded-full text-[17px] font-semibold",
+                    selected ? "bg-ios text-white" : "text-label",
+                  )}
+                >
+                  {dt.getDate()}
+                </span>
+                <span className={clsx("mt-0.5 text-[10px] font-semibold tracking-wide", selected ? "text-ios" : "text-muted")}>
+                  {WEEK[dt.getDay()]}
+                </span>
+                <span className={clsx("mt-1 h-1.5 w-1.5 rounded-full", isToday ? "bg-ios" : "bg-transparent")} />
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
