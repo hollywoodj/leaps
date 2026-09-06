@@ -915,7 +915,7 @@ export function importData(raw: unknown, options: { replace?: boolean } = {}): {
 export function seedSampleData(asOf = todayISO()): void {
   if (listTrackers(true).length) return;
 
-  const picks = ["meditate", "drink-water", "floss", "exercise", "save", "no-sugar", "side-project"];
+  const picks = ["meditate", "drink-water", "floss", "exercise", "read-daily", "save", "no-sugar", "side-project"];
   for (const id of picks) {
     const template = TEMPLATES.find((t) => t.id === id)!;
     const start = addDays(asOf, -45);

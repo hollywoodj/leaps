@@ -1,7 +1,7 @@
 import type { TodayItem } from "./types";
 
 /** Visual buckets on the pet. Leaps tags (and titles) fold into these. */
-export type PetVisualCategory = "hygiene" | "fitness" | "food" | "sleep" | "mind" | "health";
+export type PetVisualCategory = "hygiene" | "fitness" | "learning" | "food" | "sleep" | "mind" | "health";
 
 export const PET_VISUAL_CATEGORIES: {
   id: PetVisualCategory;
@@ -22,7 +22,14 @@ export const PET_VISUAL_CATEGORIES: {
     label: "Fitness",
     color: "#FF3B30",
     aliases: ["fitness", "workout", "exercise", "gym", "training", "sport", "cardio", "strength", "run", "running", "lift", "yoga"],
-    effect: "Complete makes the pet bigger.",
+    effect: "Finish them for muscles. Skip them and the pet gets fat.",
+  },
+  {
+    id: "learning",
+    label: "Learning",
+    color: "#0A84FF",
+    aliases: ["learning", "learn", "study", "read", "book", "course", "school", "lesson", "tutorial", "language"],
+    effect: "Finish them for a graduation cap. Skip them and the pet looks dumb.",
   },
   {
     id: "food",
@@ -73,8 +80,10 @@ export type PetState = {
   tired: boolean;
   sad: boolean;
   sick: boolean;
-  bigger: boolean;
-  sizeScale: number;
+  muscled: boolean;
+  fat: boolean;
+  graduated: boolean;
+  dumb: boolean;
   status: string;
   done: number;
   total: number;
@@ -102,7 +111,7 @@ export function matchPetCategory(text: string): PetVisualCategory | null {
       if (joined.includes(alias)) return id;
       continue;
     }
-    if (parts.some((part) => part === alias || part.startsWith(alias))) return id;
+    if (parts.some((part) => part === alias || part === `${alias}s` || (alias.length >= 5 && part.startsWith(alias)))) return id;
   }
   return null;
 }
@@ -158,6 +167,7 @@ export function derivePetState(items: TodayItem[]): PetState {
   const total = items.length;
   const hygiene = byId.get("hygiene")!;
   const fitness = byId.get("fitness")!;
+  const learning = byId.get("learning")!;
   const food = byId.get("food")!;
   const sleep = byId.get("sleep")!;
   const mind = byId.get("mind")!;
@@ -165,23 +175,28 @@ export function derivePetState(items: TodayItem[]): PetState {
 
   const alive = total > 0 && done === total;
   const smell = hygiene.present && !hygiene.complete;
+  const muscled = fitness.present && fitness.complete;
+  const fat = fitness.present && !fitness.complete;
+  const graduated = learning.present && learning.complete;
+  const dumb = learning.present && !learning.complete;
   const hungry = food.present && !food.complete;
   const tired = sleep.present && !sleep.complete;
   const sad = mind.present && !mind.complete;
   const sick = health.present && !health.complete;
-  const fitnessRatio = fitness.present && fitness.total ? fitness.done / fitness.total : 0;
-  const bigger = fitness.present && fitness.complete;
-  const sizeScale = fitness.present ? 0.82 + 0.5 * fitnessRatio : 1;
 
   let stage: PetStage = "egg";
   let status = "ADD HABITS";
   if (total > 0 && alive) {
     stage = "happy";
-    status = "HAPPY";
+    status = muscled ? "SWOLE" : fat ? "HAPPY" : "HAPPY";
+    if (graduated) status = muscled ? "SWOLE GRAD" : "GRAD";
+    if (dumb) status = "DUMB";
   } else if (total > 0) {
     stage = "dead";
     status = "DEAD";
     if (smell) status = "DEAD · STINKY";
+    else if (dumb) status = "DEAD · DUMB";
+    else if (fat) status = "DEAD · FAT";
   }
 
   return {
@@ -192,8 +207,10 @@ export function derivePetState(items: TodayItem[]): PetState {
     tired,
     sad,
     sick,
-    bigger,
-    sizeScale: Math.round(sizeScale * 100) / 100,
+    muscled,
+    fat,
+    graduated,
+    dumb,
     status,
     done,
     total,
@@ -205,9 +222,20 @@ export function petTagColor(name: string, fallback?: string): string {
   return colorForPetCategoryName(name) ?? fallback ?? "#0A84FF";
 }
 
-export type PetSpriteName = "egg" | "baby" | "adult" | "sick" | "dead" | "sleep" | "sad";
+export type PetSpriteName =
+  | "egg"
+  | "baby"
+  | "dead"
+  | "deadDumb"
+  | "dumb"
+  | "fat"
+  | "fatDead"
+  | "fatDumb"
+  | "muscled"
+  | "muscledDead"
+  | "muscledDumb";
 
-/** Original Pocket Pet pixel frames (10×7). */
+/** Pocket Pet pixel frames. Fat/muscle bodies are 14×8; the rest are 10×7. */
 export const PET_SPRITES: Record<PetSpriteName, [string[], string[]]> = {
   egg: [
     ["    ##    ", "  ######  ", " ##    ## ", "##      ##", "##      ##", " ##    ## ", "  ######  "],
@@ -217,25 +245,149 @@ export const PET_SPRITES: Record<PetSpriteName, [string[], string[]]> = {
     [" ##    ## ", "  ######  ", " ######## ", "##  ##  ##", "####  ####", " ######## ", "  ##  ##  "],
     [" ##    ## ", "  ######  ", " ######## ", "##  ##  ##", "### ## ###", " ######## ", " ##    ## "],
   ],
-  adult: [
-    ["##      ##", " ######## ", "## #### ##", "####  ####", " ######## ", "##  ##  ##", " ##    ## "],
-    ["##      ##", " ######## ", "## #### ##", "### ## ###", " ######## ", " ##    ## ", "##      ##"],
-  ],
-  sick: [
-    [" ##    ## ", "  ######  ", " ######## ", "##  ##  ##", "### ## ###", " #  ##  # ", "  ######  "],
-    [" ##    ## ", "  ######  ", " ######## ", "##  ##  ##", "### ## ###", "  ######  ", "   #  #   "],
-  ],
   dead: [
     [" ##    ## ", "  ##  ##  ", "   ####   ", "  ##  ##  ", " ##    ## ", "          ", "  ######  "],
     [" ##    ## ", "  ##  ##  ", "   ####   ", "  ##  ##  ", " ##    ## ", "          ", "  ######  "],
   ],
-  sleep: [
-    ["      ##  ", "     ##   ", "    ####  ", " ##    ## ", "  ######  ", "   ## ##  ", "  ##   ## "],
-    ["    ##    ", "   ##     ", "  ####    ", " ##    ## ", "  ######  ", "  ##  ##  ", " ##    ## "],
+  deadDumb: [
+    [" ##    ## ", "  ##  ##  ", "   ####   ", "  ##  ##  ", " ## ##  # ", "    #     ", "  ######  "],
+    [" ##    ## ", "  ##  ##  ", "   ####   ", "  ##  ##  ", " ## ##  # ", "     #    ", "  ######  "],
   ],
-  sad: [
-    [" ##    ## ", "  ######  ", " ######## ", "##  ##  ##", "####  ####", " ## ## ## ", "  ######  "],
-    [" ##    ## ", "  ######  ", " ######## ", "##  ##  ##", "### ## ###", " ##    ## ", "  ######  "],
+  dumb: [
+    [" ##    ## ", "  ######  ", " #  ##  # ", "##      ##", "##  ##  ##", " ###  ### ", "  ##  ##  "],
+    [" ##    ## ", "  ######  ", " #  ##  # ", "##      ##", "###    ###", " ###  ### ", " ##    ## "],
+  ],
+  fat: [
+    [
+      "    ##  ##    ",
+      "  ##########  ",
+      " ############ ",
+      "##  ##  ##  ##",
+      "##############",
+      "##############",
+      " ############ ",
+      "   ##    ##   ",
+    ],
+    [
+      "    ##  ##    ",
+      "  ##########  ",
+      " ############ ",
+      "##  ##  ##  ##",
+      "##############",
+      "##############",
+      " ############ ",
+      "  ##      ##  ",
+    ],
+  ],
+  fatDead: [
+    [
+      "    ##  ##    ",
+      "  ##########  ",
+      " ##  ##  ## # ",
+      "  ##    ##    ",
+      " ##  ##  ##   ",
+      "##############",
+      " ############ ",
+      "   ##    ##   ",
+    ],
+    [
+      "    ##  ##    ",
+      "  ##########  ",
+      " ##  ##  ## # ",
+      "  ##    ##    ",
+      " ##  ##  ##   ",
+      "##############",
+      " ############ ",
+      "   ##    ##   ",
+    ],
+  ],
+  fatDumb: [
+    [
+      "    ##  ##    ",
+      "  ##########  ",
+      " ##  #  #   # ",
+      "##          ##",
+      "###  ####  ###",
+      "##############",
+      " ############ ",
+      "   ##    ##   ",
+    ],
+    [
+      "    ##  ##    ",
+      "  ##########  ",
+      " ##  #  #   # ",
+      "##          ##",
+      "##  ##  ##  ##",
+      "##############",
+      " ############ ",
+      "  ##      ##  ",
+    ],
+  ],
+  muscled: [
+    [
+      "  ##      ##  ",
+      "##############",
+      "##  ####  ##  ",
+      "####    ####  ",
+      "##############",
+      "##  ####  ##  ",
+      " ## ##  ## ## ",
+      "##          ##",
+    ],
+    [
+      "  ##      ##  ",
+      "##############",
+      "##  ####  ##  ",
+      "####    ####  ",
+      "##############",
+      "##  ####  ##  ",
+      "##  ##  ##  ##",
+      " ##        ## ",
+    ],
+  ],
+  muscledDead: [
+    [
+      "  ##      ##  ",
+      "##############",
+      "## ##  ## ##  ",
+      " ##  ##  ##   ",
+      "## ##  ## ##  ",
+      "##############",
+      " ## ##  ## ## ",
+      "##          ##",
+    ],
+    [
+      "  ##      ##  ",
+      "##############",
+      "## ##  ## ##  ",
+      " ##  ##  ##   ",
+      "## ##  ## ##  ",
+      "##############",
+      " ## ##  ## ## ",
+      "##          ##",
+    ],
+  ],
+  muscledDumb: [
+    [
+      "  ##      ##  ",
+      "##############",
+      "##   #  #  ## ",
+      "###      ###  ",
+      "##  ####  ##  ",
+      "##############",
+      " ## ##  ## ## ",
+      "##          ##",
+    ],
+    [
+      "  ##      ##  ",
+      "##############",
+      "##   #  #  ## ",
+      "###      ###  ",
+      "###  ##  ###  ",
+      "##############",
+      "##  ##  ##  ##",
+      " ##        ## ",
+    ],
   ],
 };
 
@@ -244,10 +396,31 @@ export const SMELL_FRAMES: [string[], string[]] = [
   [" #  #     ", "  #   #  #", " #  #     ", "#    #    ", "  #    #  "],
 ];
 
+/** Mortarboard + tassel, drawn above the head when Learning is complete. */
+export const CAP_SPRITE = ["  ##########  ", " ############ ", "      ##      ", "      ###     "];
+
+/** Floating ? marks when Learning is incomplete. */
+export const DUMB_FRAMES: [string[], string[]] = [
+  [" ###", "#  #", "  # ", "  # ", "  # "],
+  ["  ###", " #  #", "   # ", "   # ", "   # "],
+];
+
 export function spriteForPet(state: PetState): PetSpriteName {
   if (state.stage === "egg") return "egg";
-  if (!state.alive) return "dead";
-  return state.bigger ? "adult" : "baby";
+  if (!state.alive) {
+    if (state.muscled) return "muscledDead";
+    if (state.fat) return "fatDead";
+    if (state.dumb) return "deadDumb";
+    return "dead";
+  }
+  if (state.dumb) {
+    if (state.muscled) return "muscledDumb";
+    if (state.fat) return "fatDumb";
+    return "dumb";
+  }
+  if (state.muscled) return "muscled";
+  if (state.fat) return "fat";
+  return "baby";
 }
 
 export function collectTodayItems(data: { due: TodayItem[]; done: TodayItem[]; missed: TodayItem[] }): TodayItem[] {

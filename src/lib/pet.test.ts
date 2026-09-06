@@ -3,6 +3,7 @@ import {
   collectTodayItems,
   derivePetState,
   matchPetCategory,
+  PET_SPRITES,
   petCategoryForItem,
   spriteForPet,
 } from "./pet";
@@ -62,7 +63,8 @@ describe("matchPetCategory", () => {
     expect(matchPetCategory("Fitness")).toBe("fitness");
     expect(matchPetCategory("Morning Workout")).toBe("fitness");
     expect(matchPetCategory("Floss")).toBe("hygiene");
-    expect(matchPetCategory("Drink Water")).toBe("food");
+    expect(matchPetCategory("Read 20 Minutes")).toBe("learning");
+    expect(matchPetCategory("Learning")).toBe("learning");
     expect(matchPetCategory("brunch")).toBeNull();
   });
 });
@@ -81,7 +83,8 @@ describe("derivePetState", () => {
     expect(pet.stage).toBe("egg");
     expect(pet.alive).toBe(false);
     expect(pet.smell).toBe(false);
-    expect(pet.sizeScale).toBe(1);
+    expect(pet.fat).toBe(false);
+    expect(pet.muscled).toBe(false);
     expect(spriteForPet(pet)).toBe("egg");
   });
 
@@ -92,7 +95,7 @@ describe("derivePetState", () => {
     expect(dead.status).toBe("DEAD");
     expect(spriteForPet(dead)).toBe("dead");
 
-    const happy = derivePetState([item("Journal", "done"), item("Read", "done")]);
+    const happy = derivePetState([item("Inbox Zero", "done"), item("Call Mom", "done")]);
     expect(happy.alive).toBe(true);
     expect(happy.stage).toBe("happy");
     expect(happy.status).toBe("HAPPY");
@@ -131,23 +134,68 @@ describe("derivePetState", () => {
     expect(pet.alive).toBe(true);
   });
 
-  it("grows the pet from the fitness category, including when other habits are unfinished", () => {
-    const small = derivePetState([item("Gym", "due", [{ name: "Fitness" }]), item("Floss", "due", [{ name: "Hygiene" }])]);
-    expect(small.bigger).toBe(false);
-    expect(small.sizeScale).toBe(0.82);
-    expect(small.smell).toBe(true);
+  it("gives the pet muscles when fitness is done and fat when it is not", () => {
+    const soft = derivePetState([item("Gym", "due", [{ name: "Fitness" }]), item("Floss", "due", [{ name: "Hygiene" }])]);
+    expect(soft.fat).toBe(true);
+    expect(soft.muscled).toBe(false);
+    expect(soft.smell).toBe(true);
+    expect(spriteForPet(soft)).toBe("fatDead");
 
-    const big = derivePetState([item("Gym", "done", [{ name: "Fitness" }]), item("Floss", "due", [{ name: "Hygiene" }])]);
-    expect(big.alive).toBe(false);
-    expect(big.bigger).toBe(true);
-    expect(big.sizeScale).toBe(1.32);
-    expect(big.smell).toBe(true);
-    expect(spriteForPet(big)).toBe("dead");
+    const jackedDead = derivePetState([item("Gym", "done", [{ name: "Fitness" }]), item("Floss", "due", [{ name: "Hygiene" }])]);
+    expect(jackedDead.alive).toBe(false);
+    expect(jackedDead.muscled).toBe(true);
+    expect(jackedDead.fat).toBe(false);
+    expect(spriteForPet(jackedDead)).toBe("muscledDead");
 
     const jacked = derivePetState([item("Gym", "done", [{ name: "Fitness" }]), item("Floss", "done", [{ name: "Hygiene" }])]);
     expect(jacked.alive).toBe(true);
-    expect(jacked.bigger).toBe(true);
-    expect(spriteForPet(jacked)).toBe("adult");
+    expect(jacked.muscled).toBe(true);
+    expect(spriteForPet(jacked)).toBe("muscled");
+  });
+
+  it("puts a graduation cap on finished learning and a dumb look when it is skipped", () => {
+    const slow = derivePetState([
+      item("Read 20 Minutes", "due", [{ name: "Learning" }]),
+      item("Study Spanish", "due", [{ name: "Learning" }]),
+    ]);
+    const learning = slow.categories.find((cat) => cat.id === "learning")!;
+    expect(learning.present).toBe(true);
+    expect(learning.total).toBe(2);
+    expect(learning.complete).toBe(false);
+    expect(slow.dumb).toBe(true);
+    expect(slow.graduated).toBe(false);
+    expect(slow.alive).toBe(false);
+    expect(spriteForPet(slow)).toBe("deadDumb");
+
+    const half = derivePetState([
+      item("Read 20 Minutes", "done", [{ name: "Learning" }]),
+      item("Study Spanish", "due", [{ name: "Learning" }]),
+    ]);
+    expect(half.dumb).toBe(true);
+    expect(half.graduated).toBe(false);
+
+    const grad = derivePetState([
+      item("Read 20 Minutes", "done", [{ name: "Learning" }]),
+      item("Study Spanish", "done", [{ name: "Learning" }]),
+    ]);
+    expect(grad.alive).toBe(true);
+    expect(grad.graduated).toBe(true);
+    expect(grad.dumb).toBe(false);
+    expect(grad.status).toBe("GRAD");
+  });
+
+  it("can stack muscles, a cap, smell, and a dumb look from separate categories", () => {
+    const pet = derivePetState([
+      item("Gym", "done", [{ name: "Fitness" }]),
+      item("Floss", "due", [{ name: "Hygiene" }]),
+      item("Read", "due", [{ name: "Learning" }]),
+    ]);
+    expect(pet.muscled).toBe(true);
+    expect(pet.fat).toBe(false);
+    expect(pet.smell).toBe(true);
+    expect(pet.dumb).toBe(true);
+    expect(pet.graduated).toBe(false);
+    expect(spriteForPet(pet)).toBe("muscledDead");
   });
 
   it("maps leftover visual categories without letting them override hygiene or fitness", () => {
@@ -162,7 +210,10 @@ describe("derivePetState", () => {
     expect(pet.sad).toBe(false);
     expect(pet.sick).toBe(true);
     expect(pet.smell).toBe(false);
-    expect(pet.bigger).toBe(false);
+    expect(pet.muscled).toBe(false);
+    expect(pet.fat).toBe(false);
+    expect(pet.graduated).toBe(false);
+    expect(pet.dumb).toBe(false);
   });
 });
 
@@ -174,5 +225,16 @@ describe("collectTodayItems", () => {
       done: [item("C", "done")],
     });
     expect(items.map((row) => row.tracker.title)).toEqual(["A", "B", "C"]);
+  });
+});
+
+describe("PET_SPRITES", () => {
+  it("keeps every frame rectangular", () => {
+    for (const [name, frames] of Object.entries(PET_SPRITES)) {
+      for (const rows of frames) {
+        const width = rows[0].length;
+        expect(rows.every((row) => row.length === width), name).toBe(true);
+      }
+    }
   });
 });

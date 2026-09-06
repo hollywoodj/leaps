@@ -139,6 +139,9 @@ describe("Strides chrome copy", () => {
     expect(pet).not.toContain("onClick");
     expect(engine).toContain('id: "hygiene"');
     expect(engine).toContain('id: "fitness"');
+    expect(engine).toContain('id: "learning"');
+    expect(engine).toContain("muscled");
+    expect(engine).toContain("graduated");
     expect(settings).toContain("checkmarks are the only input");
     expect(create).toContain("PET_VISUAL_CATEGORIES");
     expect(main).toContain('label: "Pocket Pet"');

@@ -3,6 +3,8 @@
 import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 import {
+  CAP_SPRITE,
+  DUMB_FRAMES,
   PET_SPRITES,
   PET_VISUAL_CATEGORIES,
   SMELL_FRAMES,
@@ -64,10 +66,15 @@ export function PocketPet({
   const spriteName = spriteForPet(state);
   const sprite = PET_SPRITES[spriteName][frame % 2];
   const smell = SMELL_FRAMES[frame % 2];
+  const dumbMark = DUMB_FRAMES[frame % 2];
   const presentCats = useMemo(
     () => state.categories.filter((cat) => cat.present),
     [state.categories],
   );
+  const cols = sprite[0]?.length ?? 10;
+  const bodyW = cols * CELL;
+  const originX = Math.round((154 - bodyW) / 2);
+  const originY = state.graduated ? 40 : 32;
 
   useEffect(() => {
     const id = window.setInterval(() => setFrame((n) => n + 1), 700);
@@ -78,7 +85,10 @@ export function PocketPet({
     state.status,
     state.alive ? "healthy pocket pet" : state.total ? "dead pocket pet" : "pocket pet egg",
     state.smell ? "with a smell cloud" : "",
-    state.bigger ? "visually bigger from workouts" : "",
+    state.muscled ? "with muscles from fitness" : "",
+    state.fat ? "looking fat from skipped workouts" : "",
+    state.graduated ? "wearing a graduation cap" : "",
+    state.dumb ? "looking dumb from skipped learning" : "",
   ]
     .filter(Boolean)
     .join(", ");
@@ -110,17 +120,21 @@ export function PocketPet({
             >
               {state.status}
             </text>
-            <g
-              style={{
-                transform: `translate(57px, 34px) scale(${state.sizeScale})`,
-                transformOrigin: "20px 14px",
-                transition: "transform 280ms ease",
-              }}
-            >
+            {state.graduated && (
+              <g style={{ transform: `translate(${originX}px, ${originY - CAP_SPRITE.length * CELL + 4}px)` }}>
+                <PixelGrid rows={CAP_SPRITE} fill="var(--pet-lcd-pixel)" />
+              </g>
+            )}
+            <g style={{ transform: `translate(${originX}px, ${originY}px)`, transition: "transform 280ms ease" }}>
               <PixelGrid rows={sprite} fill="var(--pet-lcd-pixel)" />
             </g>
+            {state.dumb && (
+              <g style={{ transform: `translate(${originX + bodyW - 4}px, ${originY - 2}px)` }}>
+                <PixelGrid rows={dumbMark} fill="var(--pet-lcd-pixel)" cell={3} />
+              </g>
+            )}
             {state.smell && (
-              <g style={{ transform: `translate(${72 + state.sizeScale * 18}px, 28px)` }}>
+              <g style={{ transform: `translate(${originX + bodyW - 8}px, ${originY}px)` }}>
                 <g className="pocket-pet-smell">
                   <PixelGrid rows={smell} fill="var(--pet-lcd-muted)" cell={3} />
                   <text
@@ -159,13 +173,13 @@ export function PocketPet({
             <rect x="8" y="96" width="138" height="1" fill="var(--pet-lcd-muted)" />
             {presentCats.map((cat, index) => {
               const meta = PET_VISUAL_CATEGORIES.find((row) => row.id === cat.id)!;
-              const x = 12 + index * 23;
+              const x = 8 + index * 21;
               return (
                 <g key={cat.id}>
                   <rect
                     x={x}
                     y={101}
-                    width="16"
+                    width="18"
                     height="10"
                     fill={cat.complete ? "var(--pet-lcd-pixel)" : "transparent"}
                     stroke="var(--pet-lcd-pixel)"
@@ -173,12 +187,12 @@ export function PocketPet({
                     opacity={cat.complete ? 1 : 0.45}
                   />
                   <text
-                    x={x + 8}
+                    x={x + 9}
                     y={109}
                     textAnchor="middle"
                     fill={cat.complete ? "var(--pet-lcd-bg)" : "var(--pet-lcd-pixel)"}
                     fontFamily="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-                    fontSize="6"
+                    fontSize="5.5"
                     fontWeight="700"
                   >
                     {meta.label.slice(0, 3).toUpperCase()}
@@ -198,8 +212,8 @@ export function PetCategoryLegend({ state }: { state: PetState }) {
   if (!rows.length) {
     return (
       <p className="px-6 text-center text-[13px] leading-5 text-muted">
-        Tag habits Hygiene, Fitness, Food, Sleep, Mind, or Health. Completing every due habit keeps the pet alive.
-        Workouts make it bigger. Skipping hygiene adds a smell.
+        Tag habits Hygiene, Fitness, Learning, Food, Sleep, Mind, or Health. Completing every due habit keeps the pet
+        alive. Fitness makes muscles or fat. Learning gives a cap or a dumb look. Skipping hygiene adds a smell.
       </p>
     );
   }
