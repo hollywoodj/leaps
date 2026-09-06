@@ -63,6 +63,7 @@ export function ReportsView() {
         title="Reports"
         menu={[
           { href: "/", label: "Daily Goals" },
+          { href: "/pet", label: "Pocket Pet" },
           { href: "/reports", label: "Reports" },
         ]}
         left={

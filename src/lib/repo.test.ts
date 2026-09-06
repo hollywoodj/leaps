@@ -8,6 +8,7 @@ import {
   getToday,
   importData,
   seedSampleData,
+  tagsForTracker,
   toggleMilestone,
 } from "./repo";
 
@@ -103,5 +104,22 @@ describe("repo", () => {
     createTracker({ title: "Beta", type: "habit", startDate: "2026-08-17" });
     importData(snapshot, { replace: false });
     expect(exportData().trackers.map((tracker) => tracker.title).sort()).toEqual(["Alpha", "Beta"]);
+  });
+
+  it("tags a tracker from its Pocket Pet category", () => {
+    const tracker = createTracker({
+      title: "Shower",
+      type: "habit",
+      startDate: "2026-09-06",
+      category: "Hygiene",
+    });
+    expect(tagsForTracker(tracker.id).map((tag) => tag.name)).toEqual(["Hygiene"]);
+    const gym = createTracker({
+      title: "Lift",
+      type: "habit",
+      startDate: "2026-09-06",
+      category: "Fitness",
+    });
+    expect(tagsForTracker(gym.id).some((tag) => tag.name === "Fitness")).toBe(true);
   });
 });

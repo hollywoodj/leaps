@@ -5,14 +5,16 @@ import { FilterItem, FilterPopover, IosSpinner } from "@/components/ios";
 import { HeaderButton, NavHeader } from "@/components/NavHeader";
 import { LogValueModal } from "@/components/LogValueModal";
 import { PerfectDay } from "@/components/PerfectDay";
+import { PocketPet } from "@/components/PocketPet";
 import { TrackerCard } from "@/components/TrackerCard";
 import { api } from "@/lib/client";
 import { todayISO } from "@/lib/dates";
+import { collectTodayItems, derivePetState } from "@/lib/pet";
 import { classifyToday, sumValues } from "@/lib/stats";
 import type { LogEntry, LogStatus, Tag, TodayItem } from "@/lib/types";
 import { Settings, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type TodayResponse = {
   date: string;
@@ -224,6 +226,7 @@ export function TodayView() {
   const missed = filtered(data?.missed ?? []);
   const done = filtered(data?.done ?? []);
   const empty = data && due.length + done.length + missed.length === 0;
+  const pet = useMemo(() => derivePetState(data ? collectTodayItems(data) : []), [data]);
 
   function cardHandlers(item: TodayItem) {
     return {
@@ -245,6 +248,7 @@ export function TodayView() {
         title="Daily Goals"
         menu={[
           { href: "/", label: "Daily Goals" },
+          { href: "/pet", label: "Pocket Pet" },
           { href: "/reports", label: "Reports" },
         ]}
         left={
@@ -293,12 +297,20 @@ export function TodayView() {
       {error && <p className="px-4 py-3 text-sm text-bad">{error}</p>}
       {!data && !error && <IosSpinner label="Loading" />}
 
+      {data && (
+        <Link href="/pet" className="block px-4 pb-1 pt-3" aria-label="Open Pocket Pet">
+          <PocketPet state={pet} compact />
+          <p className="mt-1 text-center text-[11px] font-semibold uppercase tracking-[0.04em] text-muted">
+            {pet.status}
+          </p>
+        </Link>
+      )}
+
       {empty && (
-        <div className="px-8 py-16 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl shadow-card">🎯</div>
-          <h2 className="mt-4 text-[20px] font-semibold text-navy">Nothing due</h2>
+        <div className="px-8 pb-16 pt-4 text-center">
+          <h2 className="text-[20px] font-semibold text-navy">Nothing due</h2>
           <p className="mt-1 text-[15px] leading-5 text-muted">
-            Add a habit, target, average, or project — or start from a template.
+            Add a habit, target, average, or project — or start from a template. Checking them off is the only way to care for Pocket Pet.
           </p>
           <div className="mt-6 flex justify-center gap-2">
             <Link href="/create" className="rounded-full bg-ios px-4 py-2 text-[15px] font-semibold text-white press">

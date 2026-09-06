@@ -38,6 +38,18 @@ export function SettingsView() {
         {inElectron ? " (Help → Show Data Folder)." : ". The browser is only the UI."}
       </p>
 
+      <h2 className="ios-section">Pocket Pet</h2>
+      <div className="ios-inset px-4 py-3 text-[15px] leading-5 text-label">
+        <p>
+          Completing every due habit keeps the pet alive. Leaving any incomplete kills it. There are no feed, clean, or game
+          buttons — checkmarks are the only input.
+        </p>
+        <p className="mt-2 text-[13px] text-muted">
+          Tag habits so they share one visual: Hygiene (smell when unfinished), Fitness (bigger when done), Food, Sleep, Mind,
+          and Health.
+        </p>
+      </div>
+
       <h2 className="ios-section">Tags</h2>
       <div className="ios-inset">
         <form

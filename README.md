@@ -1,12 +1,12 @@
 # Leaps
 
-A desktop and web clone of [Strides](https://www.stridesapp.com/) — habits, numeric targets, averages, and projects in one daily list.
+A desktop and web clone of [Strides](https://www.stridesapp.com/) — habits, numeric targets, averages, and projects in one daily list. Completing those habits is also how you care for **Pocket Pet**, a display-only 1990s virtual pet: check everything off and it stays healthy, skip the day and it dies. Workout / Fitness habits make it visually bigger; unfinished Hygiene habits add a smell. The original care buttons are gone.
 
 **Data is not stored in the browser.** Trackers, logs, tags, and milestones live in a local SQLite file. In the Electron app that file is in the app data folder (Help → Show Data Folder). In the web server it is `data/leaps.db`.
 
 ## Features
 
-- **Daily Goals** — due / missed / done, date backlog, skip, perfect-day banner
+- **Pocket Pet** — habit checkmarks drive a virtual pet. Tags map onto visuals (Hygiene, Fitness, Food, Sleep, Mind, Health).
 - **Four tracker types** — Habit (good or bad), Target (pace line), Average, Project (milestones)
 - **Reports** — progress, trends, calendar heatmap, streak rankings, tag filters
 - **Templates** — health, fitness, money, learning, and more

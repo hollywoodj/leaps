@@ -98,7 +98,8 @@ function buildMenu() {
       label: "View",
       submenu: [
         { label: "Daily Goals", accelerator: "CommandOrControl+1", click: () => send({ type: "today" }) },
-        { label: "Reports", accelerator: "CommandOrControl+2", click: () => send({ type: "reports" }) },
+        { label: "Pocket Pet", accelerator: "CommandOrControl+2", click: () => send({ type: "pet" }) },
+        { label: "Reports", accelerator: "CommandOrControl+3", click: () => send({ type: "reports" }) },
         { type: "separator" },
         { role: "reload" },
         { role: "toggleDevTools" },
