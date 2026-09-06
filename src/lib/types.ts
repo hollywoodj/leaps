@@ -41,6 +41,7 @@ export interface TrackerInput {
   timesPerPeriod?: number;
   notes?: string;
   tagIds?: string[];
+  category?: string;
   milestones?: { title: string; dueDate?: string | null }[];
 }
 

@@ -123,4 +123,27 @@ describe("Strides chrome copy", () => {
     const charts = readFileSync(new URL("../components/Charts.tsx", import.meta.url), "utf8");
     expect(charts).toContain("DOW[weekday(day.date)]");
   });
+
+  it("drives Pocket Pet from habit checks with no original care inputs", () => {
+    const pet = readFileSync(new URL("../components/PocketPet.tsx", import.meta.url), "utf8");
+    const petView = readFileSync(new URL("../components/PetView.tsx", import.meta.url), "utf8");
+    const engine = readFileSync(new URL("./pet.ts", import.meta.url), "utf8");
+    expect(today).toContain('{ href: "/pet", label: "Pocket Pet" }');
+    expect(today).toContain("derivePetState");
+    expect(today).toContain("<PocketPet");
+    expect(reports).toContain('{ href: "/pet", label: "Pocket Pet" }');
+    expect(petView).toContain("Checkmarks on Daily Goals are the only way to care for it.");
+    expect(pet).not.toContain("PressA");
+    expect(pet).not.toContain("toy-button");
+    expect(pet).not.toContain("FOOD");
+    expect(pet).not.toContain("onClick");
+    expect(engine).toContain('id: "hygiene"');
+    expect(engine).toContain('id: "fitness"');
+    expect(engine).toContain('id: "learning"');
+    expect(engine).toContain("muscled");
+    expect(engine).toContain("graduated");
+    expect(settings).toContain("checkmarks are the only input");
+    expect(create).toContain("PET_VISUAL_CATEGORIES");
+    expect(main).toContain('label: "Pocket Pet"');
+  });
 });

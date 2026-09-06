@@ -6,6 +6,7 @@ import { api } from "@/lib/client";
 import { EMOJI_SET, TRACKER_COLORS } from "@/lib/colors";
 import { addDays, todayISO } from "@/lib/dates";
 import { typeCopy } from "@/lib/labels";
+import { PET_VISUAL_CATEGORIES } from "@/lib/pet";
 import type { RepeatKind, Template, TrackerInput, TrackerType } from "@/lib/types";
 import clsx from "clsx";
 import { BarChart3, Check, ChevronRight, Search, SlidersHorizontal, SquareCheck, TrendingUp } from "lucide-react";
@@ -77,6 +78,7 @@ export function CreateWizard() {
       weekdays: template.weekdays,
       timesPerPeriod: template.timesPerPeriod,
       notes: template.notes,
+      category: template.category,
       milestones: template.milestones?.map((title) => ({ title })) ?? [],
     });
     setStep(2);
@@ -407,6 +409,28 @@ export function CreateWizard() {
               />
             </label>
           )}
+          </div>
+          <h2 className="ios-section">Pocket Pet</h2>
+          <p className="px-4 pb-2 text-[13px] leading-5 text-muted">
+            Completing this habit cares for the pet. Pick a visual category so Hygiene, Fitness, and the rest share one look.
+          </p>
+          <div className="ios-inset px-4 py-3">
+            <div className="flex flex-wrap gap-2">
+              {PET_VISUAL_CATEGORIES.map((cat) => {
+                const selected = form.category === cat.label;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setForm({ ...form, category: selected ? undefined : cat.label })}
+                    className={clsx("rounded-full px-3 py-1 text-xs font-semibold press", selected ? "text-white" : "bg-grouped text-label")}
+                    style={selected ? { background: cat.color } : undefined}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <h2 className="ios-section">Notes</h2>
           <div className="ios-inset px-4 py-3">
