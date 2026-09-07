@@ -41,6 +41,7 @@ export interface TrackerInput {
   timesPerPeriod?: number;
   notes?: string;
   tagIds?: string[];
+  category?: string;
   milestones?: { title: string; dueDate?: string | null }[];
 }
 
@@ -91,6 +92,14 @@ export interface TodayItem {
   todayLogs: LogEntry[];
   todayValue: number;
   milestones: Milestone[];
+}
+
+export interface TodayPayload {
+  date: string;
+  due: TodayItem[];
+  done: TodayItem[];
+  missed: TodayItem[];
+  perfect: boolean;
 }
 
 export interface TrackerDetail {

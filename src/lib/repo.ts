@@ -3,6 +3,7 @@ import { TRACKER_COLORS } from "./colors";
 import { addDays, eachDay, todayISO } from "./dates";
 import { getDb } from "./db";
 import { isScheduledOn, scheduledDays } from "./due";
+import { petTagColor } from "./pet";
 import {
   classifyToday,
   cumulativeSeries,
@@ -21,6 +22,7 @@ import type {
   ReportsPayload,
   Tag,
   TodayItem,
+  TodayPayload,
   Tracker,
   TrackerDetail,
   TrackerInput,
@@ -289,6 +291,11 @@ export function createTracker(input: TrackerInput): Tracker {
     created,
   );
   if (input.tagIds?.length) setTrackerTags(id, input.tagIds);
+  if (input.category) {
+    const tag = createTag(input.category, petTagColor(input.category));
+    const current = input.tagIds ?? [];
+    if (!current.includes(tag.id)) setTrackerTags(id, [...current, tag.id]);
+  }
   if (input.milestones?.length) {
     const insert = db.prepare(
       "INSERT INTO milestones (id, tracker_id, title, sort_order, completed, completed_at, due_date) VALUES (?, ?, ?, ?, 0, NULL, ?)",
@@ -515,7 +522,7 @@ export function toggleMilestone(id: string, date: string): Milestone {
   return mapMilestone({ ...row, completed, completed_at: completedAt });
 }
 
-export function getToday(date: string): { date: string; due: TodayItem[]; done: TodayItem[]; missed: TodayItem[]; perfect: boolean } {
+export function getToday(date: string): TodayPayload {
   const trackers = listTrackers(false);
   const ids = trackers.map((tracker) => tracker.id);
   const logsById = logsByTrackerIds(ids);
@@ -908,11 +915,8 @@ export function importData(raw: unknown, options: { replace?: boolean } = {}): {
 
 export function seedSampleData(asOf = todayISO()): void {
   if (listTrackers(true).length) return;
-  const health = createTag("Health", "#34C759");
-  const growth = createTag("Growth", "#5856D6");
-  const money = createTag("Money", "#FF9500");
 
-  const picks = ["meditate", "drink-water", "read", "exercise", "save", "no-sugar", "side-project"];
+  const picks = ["meditate", "drink-water", "floss", "exercise", "read-daily", "save", "no-sugar", "side-project"];
   for (const id of picks) {
     const template = TEMPLATES.find((t) => t.id === id)!;
     const start = addDays(asOf, -45);
@@ -931,7 +935,7 @@ export function seedSampleData(asOf = todayISO()): void {
       weekdays: template.weekdays,
       timesPerPeriod: template.timesPerPeriod,
       notes: template.notes,
-      tagIds: template.category === "Money" ? [money.id] : template.category === "Learning" || template.category === "Productivity" ? [growth.id] : [health.id],
+      category: template.category,
       milestones: template.milestones?.map((title) => ({ title })),
     });
 
