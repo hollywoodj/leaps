@@ -2,6 +2,7 @@ node_modules
 .next
 out
 release
+release-pet
 dist
 data/*.db
 data/*.db-*

@@ -10,8 +10,8 @@ export function ElectronMenu() {
     const api = window.leaps;
     if (!api?.onMenuCommand) return;
     return api.onMenuCommand((command) => {
+      if (api.app === "pet") return;
       if (command.type === "today") router.push("/");
-      if (command.type === "pet") router.push("/pet");
       if (command.type === "reports") router.push("/reports");
       if (command.type === "create") router.push("/create");
       if (command.type === "settings") router.push("/settings");

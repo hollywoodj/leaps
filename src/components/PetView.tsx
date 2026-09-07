@@ -3,13 +3,12 @@
 import { PetCategoryLegend, PocketPet } from "@/components/PocketPet";
 import { DateStrip } from "@/components/DateStrip";
 import { IosSpinner } from "@/components/ios";
-import { HeaderButton, NavHeader } from "@/components/NavHeader";
+import { NavHeader } from "@/components/NavHeader";
 import { api } from "@/lib/client";
 import { isValidISODate, todayISO } from "@/lib/dates";
-import { collectTodayItems, derivePetState } from "@/lib/pet";
+import { derivePetState } from "@/lib/pet";
+import { collectTodayItems } from "@/lib/today";
 import type { TodayPayload } from "@/lib/types";
-import { Settings } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -26,7 +25,7 @@ export function PetView({ initialDate }: { initialDate?: string }) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      setData(await api<TodayPayload>(`/api/today?date=${date}`));
+      setData(await api<TodayPayload>(`/api/today?date=${date}`, { cache: "no-store" }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load pet");
     }
@@ -34,6 +33,18 @@ export function PetView({ initialDate }: { initialDate?: string }) {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => void load(), 2500);
+    const onFocus = () => void load();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
   }, [load]);
 
   useEffect(() => {
@@ -47,19 +58,7 @@ export function PetView({ initialDate }: { initialDate?: string }) {
 
   return (
     <div>
-      <NavHeader
-        title="Pocket Pet"
-        menu={[
-          { href: "/", label: "Daily Goals" },
-          { href: "/pet", label: "Pocket Pet" },
-          { href: "/reports", label: "Reports" },
-        ]}
-        left={
-          <HeaderButton href="/settings" label="Settings">
-            <Settings size={22} />
-          </HeaderButton>
-        }
-      />
+      <NavHeader title="Pocket Pet" />
       <DateStrip date={date} onChange={setDate} />
 
       {error && <p className="px-4 py-3 text-sm text-bad">{error}</p>}
@@ -71,16 +70,14 @@ export function PetView({ initialDate }: { initialDate?: string }) {
           <p className="mt-3 px-6 text-center text-[13px] text-muted">
             {pet.total
               ? `${pet.done} of ${pet.total} habits complete`
-              : "Checkmarks on Daily Goals are the only way to care for it."}
+              : "Checkmarks in the Leaps app are the only way to care for it."}
           </p>
           <h2 className="ios-section">Visual categories</h2>
           <PetCategoryLegend state={pet} />
           {!pet.total && (
-            <div className="mt-6 flex justify-center">
-              <Link href="/create" className="rounded-full bg-ios px-4 py-2 text-[15px] font-semibold text-white press">
-                Add a habit
-              </Link>
-            </div>
+            <p className="mt-6 px-6 text-center text-[13px] leading-5 text-muted">
+              Open Leaps to add habits. Completing them here is what keeps this pet alive.
+            </p>
           )}
         </div>
       )}

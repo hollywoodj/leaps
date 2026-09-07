@@ -19,6 +19,24 @@ describe("electron-builder config", () => {
     expect(() => validateSchema(schema, pkg.build, { name: "electron-builder" })).not.toThrow();
   });
 
+  it("packages Pocket Pet as a second app with its own id and Leaps-shared extraMetadata name", () => {
+    const schema = require("app-builder-lib/scheme.json") as object;
+    const { validateSchema } = require("app-builder-lib/out/util/config/schemaValidator") as {
+      validateSchema: (schema: object, data: unknown, config?: { name?: string }) => void;
+    };
+    const pet = JSON.parse(readFileSync(new URL("../../electron-builder.pet.json", import.meta.url), "utf8")) as {
+      appId: string;
+      productName: string;
+      extraMetadata: { name: string };
+      directories: { output: string };
+    };
+    expect(() => validateSchema(schema, pet, { name: "electron-builder" })).not.toThrow();
+    expect(pet.appId).toBe("com.pocketpet.app");
+    expect(pet.productName).toBe("Pocket Pet");
+    expect(pet.extraMetadata.name).toBe("pocket-pet");
+    expect(pet.directories.output).toBe("release-pet");
+  });
+
   it("keeps linux.desktopName off the build config", () => {
     const linux = pkg.build.linux as Record<string, unknown> | undefined;
     expect(linux).toBeDefined();
@@ -67,5 +85,9 @@ describe("electron main process", () => {
     expect(main).toContain("startup.log");
     expect(main).toContain("server-bootstrap.cjs");
     expect(main).toContain("startupLog");
+    expect(main).toContain("isPetApp()");
+    expect(main).toContain("page-title-updated");
+    expect(main).toContain("loading-pet.html");
+    expect(main).toContain("isPetPath");
   });
 });
