@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const net = require("node:net");
 const { spawn } = require("node:child_process");
 const { initAutoUpdate } = require("./updater.cjs");
+const { isPetApp, resolveLeapsDbPath } = require("./app-mode.cjs");
 const {
   captureProcessOutput,
   createBackendEnv,
@@ -17,7 +18,16 @@ const {
   waitForHealth,
 } = require("./backend-utils.cjs");
 
-const APP_NAME = "Leaps";
+const PET = isPetApp();
+if (PET) {
+  app.setName("Pocket Pet");
+  app.setAppUserModelId("com.pocketpet.app");
+} else {
+  app.setAppUserModelId("com.leaps.app");
+}
+process.env.LEAPS_APP = PET ? "pet" : "leaps";
+
+const APP_NAME = PET ? "Pocket Pet" : "Leaps";
 const isMac = process.platform === "darwin";
 
 let mainWindow = null;
@@ -29,6 +39,12 @@ function userDataDir() {
 }
 
 function dbPath() {
+  if (PET) {
+    return resolveLeapsDbPath({
+      appData: app.getPath("appData"),
+      projectRoot: path.join(__dirname, ".."),
+    });
+  }
   return path.join(userDataDir(), "leaps.db");
 }
 
@@ -55,78 +71,115 @@ function send(command) {
 }
 
 function buildMenu() {
-  const template = [
-    ...(isMac
-      ? [
-          {
-            label: APP_NAME,
-            submenu: [
-              { role: "about" },
-              { type: "separator" },
-              { label: "Settings…", accelerator: "CommandOrControl+,", click: () => send({ type: "settings" }) },
-              { type: "separator" },
-              { role: "hide" },
-              { role: "hideOthers" },
-              { role: "unhide" },
-              { type: "separator" },
-              { role: "quit" },
-            ],
-          },
-        ]
-      : []),
-    {
-      label: "File",
-      submenu: [
-        { label: "New Tracker", accelerator: "CommandOrControl+N", click: () => send({ type: "create" }) },
-        { type: "separator" },
-        isMac ? { role: "close" } : { role: "quit" },
-      ],
-    },
-    {
-      label: "Edit",
-      submenu: [
-        { role: "undo" },
-        { role: "redo" },
-        { type: "separator" },
-        { role: "cut" },
-        { role: "copy" },
-        { role: "paste" },
-        { role: "selectAll" },
-      ],
-    },
-    {
-      label: "View",
-      submenu: [
-        { label: "Daily Goals", accelerator: "CommandOrControl+1", click: () => send({ type: "today" }) },
-        { label: "Pocket Pet", accelerator: "CommandOrControl+2", click: () => send({ type: "pet" }) },
-        { label: "Reports", accelerator: "CommandOrControl+3", click: () => send({ type: "reports" }) },
-        { type: "separator" },
-        { role: "reload" },
-        { role: "toggleDevTools" },
-        { type: "separator" },
-        { role: "togglefullscreen" },
-      ],
-    },
-    { role: "windowMenu" },
-    {
-      label: "Help",
-      submenu: [
-        ...(!isMac ? [{ label: "Settings…", accelerator: "CommandOrControl+,", click: () => send({ type: "settings" }) }] : []),
+  const template = PET
+    ? [
+        ...(isMac
+          ? [
+              {
+                label: APP_NAME,
+                submenu: [{ role: "about" }, { type: "separator" }, { role: "hide" }, { role: "hideOthers" }, { role: "unhide" }, { type: "separator" }, { role: "quit" }],
+              },
+            ]
+          : []),
         {
-          label: "Show Data Folder",
-          click: () => {
-            fs.mkdirSync(userDataDir(), { recursive: true });
-            shell.openPath(userDataDir());
-          },
+          label: "File",
+          submenu: [isMac ? { role: "close" } : { role: "quit" }],
         },
-      ],
-    },
-  ];
+        {
+          label: "Edit",
+          submenu: [{ role: "undo" }, { role: "redo" }, { type: "separator" }, { role: "cut" }, { role: "copy" }, { role: "paste" }, { role: "selectAll" }],
+        },
+        {
+          label: "View",
+          submenu: [{ role: "reload" }, { role: "toggleDevTools" }, { type: "separator" }, { role: "togglefullscreen" }],
+        },
+        { role: "windowMenu" },
+        {
+          label: "Help",
+          submenu: [
+            {
+              label: "Show Leaps Data Folder",
+              click: () => {
+                const folder = path.dirname(dbPath());
+                fs.mkdirSync(folder, { recursive: true });
+                shell.openPath(folder);
+              },
+            },
+          ],
+        },
+      ]
+    : [
+        ...(isMac
+          ? [
+              {
+                label: APP_NAME,
+                submenu: [
+                  { role: "about" },
+                  { type: "separator" },
+                  { label: "Settings…", accelerator: "CommandOrControl+,", click: () => send({ type: "settings" }) },
+                  { type: "separator" },
+                  { role: "hide" },
+                  { role: "hideOthers" },
+                  { role: "unhide" },
+                  { type: "separator" },
+                  { role: "quit" },
+                ],
+              },
+            ]
+          : []),
+        {
+          label: "File",
+          submenu: [
+            { label: "New Tracker", accelerator: "CommandOrControl+N", click: () => send({ type: "create" }) },
+            { type: "separator" },
+            isMac ? { role: "close" } : { role: "quit" },
+          ],
+        },
+        {
+          label: "Edit",
+          submenu: [
+            { role: "undo" },
+            { role: "redo" },
+            { type: "separator" },
+            { role: "cut" },
+            { role: "copy" },
+            { role: "paste" },
+            { role: "selectAll" },
+          ],
+        },
+        {
+          label: "View",
+          submenu: [
+            { label: "Daily Goals", accelerator: "CommandOrControl+1", click: () => send({ type: "today" }) },
+            { label: "Reports", accelerator: "CommandOrControl+2", click: () => send({ type: "reports" }) },
+            { type: "separator" },
+            { role: "reload" },
+            { role: "toggleDevTools" },
+            { type: "separator" },
+            { role: "togglefullscreen" },
+          ],
+        },
+        { role: "windowMenu" },
+        {
+          label: "Help",
+          submenu: [
+            ...(!isMac ? [{ label: "Settings…", accelerator: "CommandOrControl+,", click: () => send({ type: "settings" }) }] : []),
+            {
+              label: "Show Data Folder",
+              click: () => {
+                fs.mkdirSync(userDataDir(), { recursive: true });
+                shell.openPath(userDataDir());
+              },
+            },
+          ],
+        },
+      ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 function startBackend(port) {
   return new Promise((resolve, reject) => {
+    fs.mkdirSync(path.dirname(dbPath()), { recursive: true });
     fs.mkdirSync(userDataDir(), { recursive: true });
     const dir = standaloneDir();
     const serverJs = path.join(dir, "server.js");
@@ -198,15 +251,17 @@ function startBackend(port) {
       });
     });
 
-    waitForHealth(port, { isAborted: () => settled }).then(succeed).catch((err) => {
-      const output = logsText(logs);
-      try {
-        persistLogs(logFile, output);
-      } catch {
-        /* ignore log write failures */
-      }
-      fail(new Error(formatBackendError({ logs: output, serverJs, cause: err.message, logFile })));
-    });
+    waitForHealth(port, { isAborted: () => settled })
+      .then(succeed)
+      .catch((err) => {
+        const output = logsText(logs);
+        try {
+          persistLogs(logFile, output);
+        } catch {
+          /* ignore log write failures */
+        }
+        fail(new Error(formatBackendError({ logs: output, serverJs, cause: err.message, logFile })));
+      });
   });
 }
 
@@ -226,21 +281,39 @@ function stopBackend() {
 }
 
 function windowOptions() {
-  return {
-    width: 920,
-    height: 780,
-    minWidth: 390,
-    minHeight: 640,
-    title: APP_NAME,
-    backgroundColor: "#f2f2f7",
-    show: false,
-    webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
-  };
+  return PET
+    ? {
+        width: 320,
+        height: 620,
+        minWidth: 280,
+        minHeight: 480,
+        title: APP_NAME,
+        backgroundColor: "#f2f2f7",
+        show: false,
+        webPreferences: {
+          preload: path.join(__dirname, "preload.cjs"),
+          additionalArguments: ["--leaps-app=pet"],
+          contextIsolation: true,
+          nodeIntegration: false,
+          sandbox: true,
+        },
+      }
+    : {
+        width: 920,
+        height: 780,
+        minWidth: 390,
+        minHeight: 640,
+        title: APP_NAME,
+        backgroundColor: "#f2f2f7",
+        show: false,
+        webPreferences: {
+          preload: path.join(__dirname, "preload.cjs"),
+          additionalArguments: ["--leaps-app=leaps"],
+          contextIsolation: true,
+          nodeIntegration: false,
+          sandbox: true,
+        },
+      };
 }
 
 function attachWindowGuards(win) {
@@ -259,12 +332,18 @@ function attachWindowGuards(win) {
   });
 }
 
+function appUrl(base) {
+  const url = new URL(base.endsWith("/") ? base : `${base}/`);
+  if (PET) url.pathname = "/pet";
+  return url.toString();
+}
+
 async function createWindow() {
   const win = new BrowserWindow(windowOptions());
   mainWindow = win;
   attachWindowGuards(win);
   win.once("ready-to-show", () => win.show());
-  await win.loadFile(path.join(__dirname, "loading.html"));
+  await win.loadFile(path.join(__dirname, PET ? "loading-pet.html" : "loading.html"));
   return win;
 }
 
@@ -289,13 +368,13 @@ if (!gotLock) {
       const win = await createWindow();
       if (process.env.ELECTRON_START_URL) {
         serverPort = Number(new URL(process.env.ELECTRON_START_URL).port || 3001);
-        await loadApp(win, process.env.ELECTRON_START_URL);
+        await loadApp(win, appUrl(process.env.ELECTRON_START_URL));
       } else {
         serverPort = await getFreePort();
         await startBackend(serverPort);
-        await loadApp(win, `http://127.0.0.1:${serverPort}/`);
+        await loadApp(win, appUrl(`http://127.0.0.1:${serverPort}/`));
       }
-      initAutoUpdate();
+      if (!PET) initAutoUpdate();
     } catch (err) {
       dialog.showErrorBox(`${APP_NAME} failed to start`, err instanceof Error ? err.message : String(err));
       app.quit();
@@ -308,7 +387,11 @@ if (!gotLock) {
 
   app.on("activate", async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      const url = process.env.ELECTRON_START_URL || (serverProcess ? `http://127.0.0.1:${serverPort}/` : null);
+      const url = process.env.ELECTRON_START_URL
+        ? appUrl(process.env.ELECTRON_START_URL)
+        : serverProcess
+          ? appUrl(`http://127.0.0.1:${serverPort}/`)
+          : null;
       if (!url) return;
       const win = await createWindow();
       await loadApp(win, url);

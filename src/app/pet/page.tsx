@@ -1,5 +1,11 @@
 import { AppShell } from "@/components/AppShell";
 import { PetView } from "@/components/PetView";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Pocket Pet",
+  description: "A Tamagotchi-style pet driven by Leaps habit checkmarks.",
+};
 
 export default async function PetPage({ searchParams }: { searchParams: Promise<{ date?: string | string[] }> }) {
   const params = await searchParams;

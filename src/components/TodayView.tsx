@@ -5,16 +5,15 @@ import { FilterItem, FilterPopover, IosSpinner } from "@/components/ios";
 import { HeaderButton, NavHeader } from "@/components/NavHeader";
 import { LogValueModal } from "@/components/LogValueModal";
 import { PerfectDay } from "@/components/PerfectDay";
-import { PocketPet } from "@/components/PocketPet";
 import { TrackerCard } from "@/components/TrackerCard";
 import { api } from "@/lib/client";
 import { todayISO } from "@/lib/dates";
-import { collectTodayItems, derivePetState } from "@/lib/pet";
+import { collectTodayItems } from "@/lib/pet";
 import { classifyToday, sumValues } from "@/lib/stats";
 import type { LogEntry, LogStatus, Tag, TodayItem, TodayPayload } from "@/lib/types";
 import { Settings, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type TodayResponse = TodayPayload;
 
@@ -221,7 +220,6 @@ export function TodayView() {
   const done = filtered(data?.done ?? []);
   const scheduledCount = data ? collectTodayItems(data).length : 0;
   const empty = data && due.length + done.length + missed.length === 0;
-  const pet = useMemo(() => derivePetState(data ? collectTodayItems(data) : []), [data]);
 
   function cardHandlers(item: TodayItem) {
     return {
@@ -243,7 +241,6 @@ export function TodayView() {
         title="Daily Goals"
         menu={[
           { href: "/", label: "Daily Goals" },
-          { href: "/pet", label: "Pocket Pet" },
           { href: "/reports", label: "Reports" },
         ]}
         left={
@@ -292,22 +289,13 @@ export function TodayView() {
       {error && <p className="px-4 py-3 text-sm text-bad">{error}</p>}
       {!data && !error && <IosSpinner label="Loading" />}
 
-      {data && (
-        <Link href={`/pet?date=${date}`} className="block px-4 pb-1 pt-3" aria-label="Open Pocket Pet">
-          <PocketPet state={pet} compact />
-          <p className="mt-1 text-center text-[11px] font-semibold uppercase tracking-[0.04em] text-muted">
-            {pet.status}
-          </p>
-        </Link>
-      )}
-
       {empty && (
         <div className="px-8 pb-16 pt-4 text-center">
           <h2 className="text-[20px] font-semibold text-navy">{tagId && scheduledCount ? "No matching goals" : "Nothing due"}</h2>
           <p className="mt-1 text-[15px] leading-5 text-muted">
             {tagId && scheduledCount
               ? "Try another tag, or add a habit in this category."
-              : "Add a habit, target, average, or project — or start from a template. Checking them off is the only way to care for Pocket Pet."}
+              : "Add a habit, target, average, or project — or start from a template."}
           </p>
           {!(tagId && scheduledCount) && (
           <div className="mt-6 flex justify-center gap-2">

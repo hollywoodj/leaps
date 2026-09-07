@@ -243,7 +243,7 @@ export function PetCategoryLegend({ state }: { state: PetState }) {
   if (!rows.length) {
     return (
       <p className="px-6 text-center text-[13px] leading-5 text-muted">
-        Tag habits Hygiene, Fitness, Learning, Food, Sleep, Mind, or Health. Completing every due habit keeps the pet
+        Tag habits Hygiene, Fitness, Learning, Food, Sleep, Mind, or Health in Leaps. Completing every due habit keeps the pet
         alive. Fitness makes muscles or fat. Learning gives a cap or a dumb look. Skipping hygiene adds a smell.
       </p>
     );

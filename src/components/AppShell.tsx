@@ -8,11 +8,12 @@ import { usePathname } from "next/navigation";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const petScreen = pathname.startsWith("/pet");
   const hideTab =
-    pathname.startsWith("/create") || pathname.startsWith("/settings") || pathname.startsWith("/trackers/");
+    petScreen || pathname.startsWith("/create") || pathname.startsWith("/settings") || pathname.startsWith("/trackers/");
 
   return (
-    <div className="ios-app">
+    <div className={clsx("ios-app", petScreen && "is-pet")}>
       <ElectronMenu />
       <div className="ios-screen">
         <div className={clsx("ios-body", !hideTab && "app-pad")}>{children}</div>

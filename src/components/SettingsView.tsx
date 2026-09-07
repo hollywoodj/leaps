@@ -41,12 +41,13 @@ export function SettingsView() {
       <h2 className="ios-section">Pocket Pet</h2>
       <div className="ios-inset px-4 py-3 text-[15px] leading-5 text-label">
         <p>
-          Completing every due habit keeps the pet alive. Leaving any incomplete kills it. There are no feed, clean, or game
+          Completing every due habit keeps Pocket Pet alive. Leaving any incomplete kills it. There are no feed, clean, or game
           buttons — checkmarks are the only input.
         </p>
         <p className="mt-2 text-[13px] text-muted">
-          Tag habits so they share one visual: Hygiene (smell when unfinished), Fitness (muscles when done, fat when not),
-          Learning (graduation cap when done, dumb look when not), Food, Sleep, Mind, and Health.
+          Pocket Pet is a separate app that reads this same local data. Tag habits so they share one visual: Hygiene (smell when
+          unfinished), Fitness (muscles when done, fat when not), Learning (graduation cap when done, dumb look when not), Food,
+          Sleep, Mind, and Health.
         </p>
       </div>
 

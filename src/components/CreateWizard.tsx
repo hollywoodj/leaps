@@ -412,7 +412,7 @@ export function CreateWizard() {
           </div>
           <h2 className="ios-section">Pocket Pet</h2>
           <p className="px-4 pb-2 text-[13px] leading-5 text-muted">
-            Completing this habit cares for the pet. Pick a visual category so Hygiene, Fitness, and the rest share one look.
+            Completing this habit cares for Pocket Pet, a separate app. Pick a visual category so Hygiene, Fitness, and the rest share one look.
           </p>
           <div className="ios-inset px-4 py-3">
             <div className="flex flex-wrap gap-2">

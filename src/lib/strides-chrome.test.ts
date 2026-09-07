@@ -32,6 +32,7 @@ describe("Strides chrome copy", () => {
   });
 
   it("hides the tab bar on pushed screens and uses an iOS hairline tab bar", () => {
+    expect(shell).toContain('pathname.startsWith("/pet")');
     expect(shell).toContain('pathname.startsWith("/trackers/")');
     expect(shell).toContain("h-[49px]");
     expect(shell).toContain("h-[58px]");
@@ -124,17 +125,19 @@ describe("Strides chrome copy", () => {
     expect(charts).toContain("DOW[weekday(day.date)]");
   });
 
-  it("drives Pocket Pet from habit checks with no original care inputs", () => {
+  it("keeps Pocket Pet as a separate app driven only by Leaps checkmarks", () => {
     const pet = readFileSync(new URL("../components/PocketPet.tsx", import.meta.url), "utf8");
     const petView = readFileSync(new URL("../components/PetView.tsx", import.meta.url), "utf8");
     const engine = readFileSync(new URL("./pet.ts", import.meta.url), "utf8");
-    expect(today).toContain('{ href: "/pet", label: "Pocket Pet" }');
-    expect(today).toContain("derivePetState");
-    expect(today).toContain("<PocketPet");
-    expect(reports).toContain('{ href: "/pet", label: "Pocket Pet" }');
-    expect(petView).toContain("Checkmarks on Daily Goals are the only way to care for it.");
-    expect(today).toContain("href={`/pet?date=${date}`}");
+    const mode = readFileSync(new URL("../../electron/app-mode.cjs", import.meta.url), "utf8");
+    expect(today).not.toContain('{ href: "/pet", label: "Pocket Pet" }');
+    expect(today).not.toContain("derivePetState");
+    expect(today).not.toContain("<PocketPet");
+    expect(today).not.toContain('href={`/pet?date=${date}`}');
+    expect(reports).not.toContain('{ href: "/pet", label: "Pocket Pet" }');
     expect(today).toContain("No matching goals");
+    expect(petView).toContain("Checkmarks in the Leaps app are the only way to care for it.");
+    expect(petView).toContain("setInterval");
     expect(pet).not.toContain("PressA");
     expect(pet).not.toContain("toy-button");
     expect(pet).not.toContain("FOOD");
@@ -145,8 +148,13 @@ describe("Strides chrome copy", () => {
     expect(engine).toContain("muscled");
     expect(engine).toContain("graduated");
     expect(settings).toContain("checkmarks are the only input");
+    expect(settings).toContain("Pocket Pet is a separate app");
     expect(create).toContain("PET_VISUAL_CATEGORIES");
-    expect(main).toContain('label: "Pocket Pet"');
+    expect(create).toContain("a separate app");
+    expect(main).toContain("isPetApp()");
+    expect(main).not.toContain('label: "Pocket Pet"');
+    expect(main).toContain('label: "Reports", accelerator: "CommandOrControl+2"');
+    expect(mode).toContain("resolveLeapsDbPath");
     expect(css).toContain("prefers-reduced-motion");
   });
 });
