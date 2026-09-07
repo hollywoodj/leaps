@@ -473,3 +473,9 @@ input[type="date"].field-ios::-webkit-calendar-picker-indicator {
     transform: translateY(-2px);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .pocket-pet-smell {
+    animation: none;
+  }
+}

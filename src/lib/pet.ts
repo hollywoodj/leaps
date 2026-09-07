@@ -61,6 +61,17 @@ export const PET_VISUAL_CATEGORIES: {
   },
 ];
 
+/** More specific buckets win when a tracker matches more than one (e.g. Health + Floss). */
+export const CATEGORY_PRIORITY: PetVisualCategory[] = [
+  "hygiene",
+  "fitness",
+  "learning",
+  "food",
+  "sleep",
+  "mind",
+  "health",
+];
+
 export type PetCategoryStatus = {
   id: PetVisualCategory;
   label: string;
@@ -117,11 +128,15 @@ export function matchPetCategory(text: string): PetVisualCategory | null {
 }
 
 export function petCategoryForItem(item: Pick<TodayItem, "tracker" | "tags">): PetVisualCategory | null {
+  const found: PetVisualCategory[] = [];
   for (const tag of item.tags) {
     const fromTag = matchPetCategory(tag.name);
-    if (fromTag) return fromTag;
+    if (fromTag && !found.includes(fromTag)) found.push(fromTag);
   }
-  return matchPetCategory(item.tracker.title);
+  const fromTitle = matchPetCategory(item.tracker.title);
+  if (fromTitle && !found.includes(fromTitle)) found.push(fromTitle);
+  if (!found.length) return null;
+  return found.sort((a, b) => CATEGORY_PRIORITY.indexOf(a) - CATEGORY_PRIORITY.indexOf(b))[0];
 }
 
 export function colorForPetCategoryName(name: string): string | undefined {
@@ -188,9 +203,10 @@ export function derivePetState(items: TodayItem[]): PetState {
   let status = "ADD HABITS";
   if (total > 0 && alive) {
     stage = "happy";
-    status = muscled ? "SWOLE" : fat ? "HAPPY" : "HAPPY";
-    if (graduated) status = muscled ? "SWOLE GRAD" : "GRAD";
-    if (dumb) status = "DUMB";
+    if (muscled && graduated) status = "SWOLE GRAD";
+    else if (muscled) status = "SWOLE";
+    else if (graduated) status = "GRAD";
+    else status = "HAPPY";
   } else if (total > 0) {
     stage = "dead";
     status = "DEAD";
@@ -404,6 +420,11 @@ export const DUMB_FRAMES: [string[], string[]] = [
   [" ###", "#  #", "  # ", "  # ", "  # "],
   ["  ###", " #  #", "   # ", "   # ", "   # "],
 ];
+
+export const HUNGRY_SPRITE = [" #### ", "#    #", " #### "];
+export const TIRED_SPRITE = ["###", " # ", "###"];
+export const SAD_SPRITE = [" # ", "###", " # "];
+export const SICK_SPRITE = [" ## ", "#  #", "  # ", " #  "];
 
 export function spriteForPet(state: PetState): PetSpriteName {
   if (state.stage === "egg") return "egg";

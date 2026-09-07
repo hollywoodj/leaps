@@ -75,6 +75,14 @@ describe("petCategoryForItem", () => {
     expect(petCategoryForItem(item("Exercise", "due"))).toBe("fitness");
     expect(petCategoryForItem(item("Inbox Zero", "due"))).toBeNull();
   });
+
+  it("does not let a Health tag hide a more specific title or tag", () => {
+    expect(petCategoryForItem(item("Floss", "due", [{ name: "Health" }]))).toBe("hygiene");
+    expect(petCategoryForItem(item("Drink Water", "due", [{ name: "Health" }]))).toBe("food");
+    expect(petCategoryForItem(item("Sleep 8h", "due", [{ name: "Health" }]))).toBe("sleep");
+    expect(petCategoryForItem(item("Vitamins", "due", [{ name: "Health" }]))).toBe("health");
+    expect(petCategoryForItem(item("Gym", "due", [{ name: "Health" }, { name: "Fitness" }]))).toBe("fitness");
+  });
 });
 
 describe("derivePetState", () => {

@@ -22,6 +22,7 @@ import type {
   ReportsPayload,
   Tag,
   TodayItem,
+  TodayPayload,
   Tracker,
   TrackerDetail,
   TrackerInput,
@@ -521,7 +522,7 @@ export function toggleMilestone(id: string, date: string): Milestone {
   return mapMilestone({ ...row, completed, completed_at: completedAt });
 }
 
-export function getToday(date: string): { date: string; due: TodayItem[]; done: TodayItem[]; missed: TodayItem[]; perfect: boolean } {
+export function getToday(date: string): TodayPayload {
   const trackers = listTrackers(false);
   const ids = trackers.map((tracker) => tracker.id);
   const logsById = logsByTrackerIds(ids);

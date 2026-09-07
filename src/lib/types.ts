@@ -94,6 +94,14 @@ export interface TodayItem {
   milestones: Milestone[];
 }
 
+export interface TodayPayload {
+  date: string;
+  due: TodayItem[];
+  done: TodayItem[];
+  missed: TodayItem[];
+  perfect: boolean;
+}
+
 export interface TrackerDetail {
   tracker: Tracker;
   tags: Tag[];

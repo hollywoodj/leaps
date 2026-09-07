@@ -133,6 +133,8 @@ describe("Strides chrome copy", () => {
     expect(today).toContain("<PocketPet");
     expect(reports).toContain('{ href: "/pet", label: "Pocket Pet" }');
     expect(petView).toContain("Checkmarks on Daily Goals are the only way to care for it.");
+    expect(today).toContain("href={`/pet?date=${date}`}");
+    expect(today).toContain("No matching goals");
     expect(pet).not.toContain("PressA");
     expect(pet).not.toContain("toy-button");
     expect(pet).not.toContain("FOOD");
@@ -145,5 +147,6 @@ describe("Strides chrome copy", () => {
     expect(settings).toContain("checkmarks are the only input");
     expect(create).toContain("PET_VISUAL_CATEGORIES");
     expect(main).toContain('label: "Pocket Pet"');
+    expect(css).toContain("prefers-reduced-motion");
   });
 });

@@ -5,30 +5,28 @@ import { DateStrip } from "@/components/DateStrip";
 import { IosSpinner } from "@/components/ios";
 import { HeaderButton, NavHeader } from "@/components/NavHeader";
 import { api } from "@/lib/client";
-import { todayISO } from "@/lib/dates";
+import { isValidISODate, todayISO } from "@/lib/dates";
 import { collectTodayItems, derivePetState } from "@/lib/pet";
-import type { TodayItem } from "@/lib/types";
+import type { TodayPayload } from "@/lib/types";
 import { Settings } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type TodayResponse = {
-  date: string;
-  due: TodayItem[];
-  done: TodayItem[];
-  missed: TodayItem[];
-  perfect: boolean;
-};
+function resolveDate(value?: string): string {
+  return value && isValidISODate(value) ? value : todayISO();
+}
 
-export function PetView() {
-  const [date, setDate] = useState(todayISO());
-  const [data, setData] = useState<TodayResponse | null>(null);
+export function PetView({ initialDate }: { initialDate?: string }) {
+  const router = useRouter();
+  const [date, setDate] = useState(() => resolveDate(initialDate));
+  const [data, setData] = useState<TodayPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      setData(await api<TodayResponse>(`/api/today?date=${date}`));
+      setData(await api<TodayPayload>(`/api/today?date=${date}`));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load pet");
     }
@@ -37,6 +35,13 @@ export function PetView() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const current = new URLSearchParams(window.location.search).get("date");
+    if (current === date) return;
+    router.replace(`/pet?date=${date}`, { scroll: false });
+  }, [date, router]);
 
   const pet = useMemo(() => derivePetState(data ? collectTodayItems(data) : []), [data]);
 

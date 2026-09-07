@@ -5,10 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CAP_SPRITE,
   DUMB_FRAMES,
+  HUNGRY_SPRITE,
   PET_SPRITES,
   PET_VISUAL_CATEGORIES,
+  SAD_SPRITE,
+  SICK_SPRITE,
   SMELL_FRAMES,
   spriteForPet,
+  TIRED_SPRITE,
   type PetState,
 } from "@/lib/pet";
 
@@ -75,8 +79,11 @@ export function PocketPet({
   const bodyW = cols * CELL;
   const originX = Math.round((154 - bodyW) / 2);
   const originY = state.graduated ? 40 : 32;
+  const chipStep = presentCats.length ? Math.min(21, Math.floor(138 / presentCats.length)) : 21;
 
   useEffect(() => {
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (motion.matches) return;
     const id = window.setInterval(() => setFrame((n) => n + 1), 700);
     return () => window.clearInterval(id);
   }, []);
@@ -89,6 +96,10 @@ export function PocketPet({
     state.fat ? "looking fat from skipped workouts" : "",
     state.graduated ? "wearing a graduation cap" : "",
     state.dumb ? "looking dumb from skipped learning" : "",
+    state.hungry ? "hungry" : "",
+    state.tired ? "tired" : "",
+    state.sad ? "sad" : "",
+    state.sick ? "sick" : "",
   ]
     .filter(Boolean)
     .join(", ");
@@ -128,6 +139,26 @@ export function PocketPet({
             <g style={{ transform: `translate(${originX}px, ${originY}px)`, transition: "transform 280ms ease" }}>
               <PixelGrid rows={sprite} fill="var(--pet-lcd-pixel)" />
             </g>
+            {state.tired && (
+              <g style={{ transform: `translate(${Math.max(4, originX - 16)}px, ${originY - 4}px)` }}>
+                <PixelGrid rows={TIRED_SPRITE} fill="var(--pet-lcd-muted)" />
+              </g>
+            )}
+            {state.hungry && (
+              <g style={{ transform: `translate(${Math.max(4, originX - 18)}px, ${originY + 18}px)` }}>
+                <PixelGrid rows={HUNGRY_SPRITE} fill="var(--pet-lcd-pixel)" />
+              </g>
+            )}
+            {state.sad && (
+              <g style={{ transform: `translate(${Math.max(4, originX - 10)}px, ${originY + 8}px)` }}>
+                <PixelGrid rows={SAD_SPRITE} fill="var(--pet-lcd-muted)" />
+              </g>
+            )}
+            {state.sick && (
+              <g style={{ transform: `translate(${originX + bodyW - 2}px, ${originY + 2}px)` }}>
+                <PixelGrid rows={SICK_SPRITE} fill="var(--pet-lcd-muted)" />
+              </g>
+            )}
             {state.dumb && (
               <g style={{ transform: `translate(${originX + bodyW - 4}px, ${originY - 2}px)` }}>
                 <PixelGrid rows={dumbMark} fill="var(--pet-lcd-pixel)" cell={3} />
@@ -173,7 +204,7 @@ export function PocketPet({
             <rect x="8" y="96" width="138" height="1" fill="var(--pet-lcd-muted)" />
             {presentCats.map((cat, index) => {
               const meta = PET_VISUAL_CATEGORIES.find((row) => row.id === cat.id)!;
-              const x = 8 + index * 21;
+              const x = 8 + index * chipStep;
               return (
                 <g key={cat.id}>
                   <rect
