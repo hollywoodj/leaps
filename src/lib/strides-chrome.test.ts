@@ -125,19 +125,26 @@ describe("Strides chrome copy", () => {
     expect(charts).toContain("DOW[weekday(day.date)]");
   });
 
-  it("keeps Pocket Pet as a separate app driven only by Leaps checkmarks", () => {
+  it("keeps Pocket Pet out of Leaps and joined only by habit data", () => {
     const pet = readFileSync(new URL("../components/PocketPet.tsx", import.meta.url), "utf8");
     const petView = readFileSync(new URL("../components/PetView.tsx", import.meta.url), "utf8");
+    const petOnly = readFileSync(new URL("../components/PetOnly.tsx", import.meta.url), "utf8");
     const engine = readFileSync(new URL("./pet.ts", import.meta.url), "utf8");
     const mode = readFileSync(new URL("../../electron/app-mode.cjs", import.meta.url), "utf8");
-    expect(today).not.toContain('{ href: "/pet", label: "Pocket Pet" }');
+    expect(today).not.toContain("Pocket Pet");
+    expect(today).not.toContain("/pet");
     expect(today).not.toContain("derivePetState");
     expect(today).not.toContain("<PocketPet");
-    expect(today).not.toContain('href={`/pet?date=${date}`}');
-    expect(reports).not.toContain('{ href: "/pet", label: "Pocket Pet" }');
+    expect(reports).not.toContain("Pocket Pet");
+    expect(reports).not.toContain("/pet");
+    expect(settings).not.toContain("Pocket Pet");
+    expect(create).not.toContain("Pocket Pet");
+    expect(create).not.toContain("PET_VISUAL_CATEGORIES");
     expect(today).toContain("No matching goals");
     expect(petView).toContain("Checkmarks in the Leaps app are the only way to care for it.");
     expect(petView).toContain("setInterval");
+    expect(petOnly).toContain('window.leaps?.app === "pet"');
+    expect(petOnly).toContain('router.replace("/")');
     expect(pet).not.toContain("PressA");
     expect(pet).not.toContain("toy-button");
     expect(pet).not.toContain("FOOD");
@@ -147,13 +154,10 @@ describe("Strides chrome copy", () => {
     expect(engine).toContain('id: "learning"');
     expect(engine).toContain("muscled");
     expect(engine).toContain("graduated");
-    expect(settings).toContain("checkmarks are the only input");
-    expect(settings).toContain("Pocket Pet is a separate app");
-    expect(create).toContain("PET_VISUAL_CATEGORIES");
-    expect(create).toContain("a separate app");
     expect(main).toContain("isPetApp()");
     expect(main).not.toContain('label: "Pocket Pet"');
     expect(main).toContain('label: "Reports", accelerator: "CommandOrControl+2"');
+    expect(main).toContain("isPetPath");
     expect(mode).toContain("resolveLeapsDbPath");
     expect(css).toContain("prefers-reduced-motion");
   });

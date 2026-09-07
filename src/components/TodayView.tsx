@@ -8,7 +8,7 @@ import { PerfectDay } from "@/components/PerfectDay";
 import { TrackerCard } from "@/components/TrackerCard";
 import { api } from "@/lib/client";
 import { todayISO } from "@/lib/dates";
-import { collectTodayItems } from "@/lib/pet";
+import { collectTodayItems } from "@/lib/today";
 import { classifyToday, sumValues } from "@/lib/stats";
 import type { LogEntry, LogStatus, Tag, TodayItem, TodayPayload } from "@/lib/types";
 import { Settings, SlidersHorizontal } from "lucide-react";

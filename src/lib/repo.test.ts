@@ -106,7 +106,7 @@ describe("repo", () => {
     expect(exportData().trackers.map((tracker) => tracker.title).sort()).toEqual(["Alpha", "Beta"]);
   });
 
-  it("tags a tracker from its Pocket Pet category", () => {
+  it("tags a tracker from its template category", () => {
     const tracker = createTracker({
       title: "Shower",
       type: "habit",

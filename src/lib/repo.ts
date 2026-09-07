@@ -3,7 +3,6 @@ import { TRACKER_COLORS } from "./colors";
 import { addDays, eachDay, todayISO } from "./dates";
 import { getDb } from "./db";
 import { isScheduledOn, scheduledDays } from "./due";
-import { petTagColor } from "./pet";
 import {
   classifyToday,
   cumulativeSeries,
@@ -292,7 +291,7 @@ export function createTracker(input: TrackerInput): Tracker {
   );
   if (input.tagIds?.length) setTrackerTags(id, input.tagIds);
   if (input.category) {
-    const tag = createTag(input.category, petTagColor(input.category));
+    const tag = createTag(input.category);
     const current = input.tagIds ?? [];
     if (!current.includes(tag.id)) setTrackerTags(id, [...current, tag.id]);
   }

@@ -88,6 +88,6 @@ describe("electron main process", () => {
     expect(main).toContain("isPetApp()");
     expect(main).toContain("page-title-updated");
     expect(main).toContain("loading-pet.html");
-    expect(main).toContain('pathname = "/pet"');
+    expect(main).toContain("isPetPath");
   });
 });

@@ -444,6 +444,4 @@ export function spriteForPet(state: PetState): PetSpriteName {
   return "baby";
 }
 
-export function collectTodayItems(data: { due: TodayItem[]; done: TodayItem[]; missed: TodayItem[] }): TodayItem[] {
-  return [...data.due, ...data.missed, ...data.done];
-}
+export { collectTodayItems } from "./today";

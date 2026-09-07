@@ -316,12 +316,29 @@ function windowOptions() {
       };
 }
 
+function isPetPath(url) {
+  try {
+    const { pathname } = new URL(url);
+    return pathname === "/pet" || pathname.startsWith("/pet/");
+  } catch {
+    return false;
+  }
+}
+
 function attachWindowGuards(win) {
   win.webContents.setWindowOpenHandler(({ url: openUrl }) => {
     shell.openExternal(openUrl);
     return { action: "deny" };
   });
   win.webContents.on("will-navigate", (event, nextUrl) => {
+    if (!PET && isPetPath(nextUrl)) {
+      event.preventDefault();
+      const fallback = new URL(nextUrl);
+      fallback.pathname = "/";
+      fallback.search = "";
+      win.loadURL(fallback.toString());
+      return;
+    }
     if (nextUrl.startsWith("http://127.0.0.1:") || nextUrl.startsWith("http://localhost:")) return;
     if (nextUrl.startsWith("file:")) return;
     event.preventDefault();
