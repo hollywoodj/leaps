@@ -327,6 +327,10 @@ function attachWindowGuards(win) {
     event.preventDefault();
     shell.openExternal(nextUrl);
   });
+  win.on("page-title-updated", (event) => {
+    event.preventDefault();
+    win.setTitle(APP_NAME);
+  });
   win.on("closed", () => {
     if (mainWindow === win) mainWindow = null;
   });

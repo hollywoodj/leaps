@@ -86,6 +86,7 @@ describe("electron main process", () => {
     expect(main).toContain("server-bootstrap.cjs");
     expect(main).toContain("startupLog");
     expect(main).toContain("isPetApp()");
+    expect(main).toContain("page-title-updated");
     expect(main).toContain("loading-pet.html");
     expect(main).toContain('pathname = "/pet"');
   });

@@ -24,7 +24,7 @@ export function PetView({ initialDate }: { initialDate?: string }) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      setData(await api<TodayPayload>(`/api/today?date=${date}`));
+      setData(await api<TodayPayload>(`/api/today?date=${date}`, { cache: "no-store" }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load pet");
     }
